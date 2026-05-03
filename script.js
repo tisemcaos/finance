@@ -1,6 +1,6 @@
 // Configuração -Substitua pela URL do seu Google Sheets
 const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbyvoodebHP9DhXKBe8a-MypidkLKHb6i0_KBbyFNBRtsjQM7HuRrj8w9lNuyyW_a3GG/exec';
-const SHEETS_LINK = 'https://docs.google.com/spreadsheets/d/1DdiyEwLlik9OvBA36xP9NYaTG_kTiDpQyDnXthCYqew/edit?usp=sharing';
+const SHEETS_LINK = 'https://Ddocs.google.com/spreadsheets/d/1DdiyEwLlik9OvBA36xP9NYaTG_kTiDpQyDnXthCYqew/edit?usp=sharing';
 
 // ============================================
 // ESTADO DA APLICAÇÃO
