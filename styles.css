@@ -47,7 +47,7 @@ body {
     height: 100vh;
     overflow-y: auto;
 }
-/*
+
 .logo {
     display: flex;
     align-items: center;
@@ -56,51 +56,6 @@ body {
     font-size: 24px;
     font-weight: bold;
     color: var(--primary);
-}*/
-
-.logo {
-    display: flex;
-    align-items: center;
-}
-
-/* Logo base */
-.logo-img {
-    width: 140px;
-    max-width: 100%;
-    height: auto;
-
-    /* suavidade */
-    transition: all 0.3s ease;
-
-    /* sombra leve */
-    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.2));
-
-    /* deixa mais “polido” */
-    cursor: pointer;
-}
-
-/* Hover moderno */
-.logo-img:hover {
-    transform: scale(1.05) translateY(-2px);
-
-    /* sombra mais forte no hover */
-    filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3));
-
-    /* leve brilho */
-    opacity: 0.95;
-}
-
-/* Responsividade */
-@media (max-width: 768px) {
-    .logo-img {
-        width: 110px;
-    }
-}
-
-@media (max-width: 480px) {
-    .logo-img {
-        width: 90px;
-    }
 }
 
 .logo i {
