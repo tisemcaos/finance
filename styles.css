@@ -1089,6 +1089,32 @@ body {
     color: #F44336 !important;
 }
 
+/* Estilo para lista de parcelas */
+#installmentList {
+    max-height: 200px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+#installmentList::-webkit-scrollbar {
+    width: 4px;
+}
+
+#installmentList::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+}
+
+#installmentList::-webkit-scrollbar-thumb {
+    background: rgba(108, 99, 255, 0.5);
+    border-radius: 4px;
+}
+
+#installmentList::-webkit-scrollbar-thumb:hover {
+    background: rgba(108, 99, 255, 0.8);
+}
+
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .sidebar {
