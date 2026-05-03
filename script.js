@@ -2277,6 +2277,137 @@ openAddModal = function() {
 };
 
 
+// ============================================
+// SINCRONIZAÇÃO DE CARTÕES COM GOOGLE SHEETS
+// ============================================
+
+// Sincronizar cartões (baixar da planilha)
+async function syncCardsFromSheets() {
+    try {
+        console.log('🔄 Baixando cartões da planilha...');
+        
+        const response = await fetch(`${GOOGLE_SHEETS_URL}?action=getCards`);
+        
+        if (!response.ok) {
+            throw new Error(`Erro HTTP ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('💳 Cartões recebidos:', result);
+        
+        if (result.success && result.cards && result.cards.length > 0) {
+            cards = result.cards.map((c, index) => ({
+                id: Date.now() + index,
+                name: c.nome || c.name || '',
+                brand: c.bandeira || c.brand || '',
+                limit: parseFloat(c.limite || c.limit) || 0,
+                spent: parseFloat(c.gasto || c.spent) || 0,
+                closingDay: parseInt(c['dia fechamento'] || c.closingDay) || null,
+                dueDay: parseInt(c['dia vencimento'] || c.dueDay) || null,
+                color: c.cor || c.color || '#6C63FF'
+            }));
+            
+            saveCards();
+            console.log('✅ Cartões sincronizados:', cards.length);
+        }
+        
+        return true;
+    } catch (error) {
+        console.error('❌ Erro ao baixar cartões:', error);
+        return false;
+    }
+}
+
+// Enviar cartões para planilha
+async function sendCardsToSheets() {
+    try {
+        const dataToSend = {
+            action: 'syncCards',
+            data: cards.map(c => ({
+                name: c.name || '',
+                brand: c.brand || '',
+                limit: parseFloat(c.limit) || 0,
+                spent: parseFloat(c.spent) || 0,
+                closingDay: c.closingDay || '',
+                dueDay: c.dueDay || '',
+                color: c.color || '#6C63FF'
+            }))
+        };
+        
+        console.log('📤 Enviando cartões para planilha...', dataToSend.data.length);
+        
+        // Tentar POST
+        let success = false;
+        
+        try {
+            const response = await fetch(GOOGLE_SHEETS_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dataToSend)
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                success = result.success;
+                console.log('✅ POST cartões:', result);
+            }
+        } catch (postError) {
+            console.log('⚠️ POST falhou, tentando GET...');
+        }
+        
+        // Fallback GET
+        if (!success) {
+            const dataParam = encodeURIComponent(JSON.stringify(dataToSend.data));
+            const url = `${GOOGLE_SHEETS_URL}?action=syncCards&data=${dataParam}`;
+            const response = await fetch(url);
+            const result = await response.json();
+            success = result.success;
+            console.log('✅ GET cartões:', result);
+        }
+        
+        return success;
+    } catch (error) {
+        console.error('❌ Erro ao enviar cartões:', error);
+        return false;
+    }
+}
+
+// Sincronização completa (transações + cartões)
+async function fullSync() {
+    const syncButton = document.querySelector('.btn-sync');
+    if (!syncButton) return;
+    
+    const originalHTML = syncButton.innerHTML;
+    syncButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando tudo...';
+    syncButton.disabled = true;
+    
+    try {
+        // 1. Baixar cartões
+        await syncCardsFromSheets();
+        
+        // 2. Baixar transações
+        await syncWithSheets();
+        
+        // 3. Atualizar interface completa
+        updateDashboard();
+        renderTransactions();
+        renderCards();
+        renderCardsSettings();
+        updateCardSelect();
+        
+        showNotification('✅ Sincronização completa realizada!', 'success');
+        console.log('✨ Sincronização completa concluída!');
+        
+    } catch (error) {
+        console.error('❌ Erro na sincronização completa:', error);
+        showNotification('❌ Erro na sincronização', 'error');
+    } finally {
+        syncButton.innerHTML = originalHTML;
+        syncButton.disabled = false;
+    }
+}
+
+
 function importData(file) {
     if (!file) {
         document.getElementById('importFile').click();
