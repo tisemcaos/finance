@@ -61,8 +61,61 @@ function initializeApp() {
     updateTransactionTypeSelect();
     updateCategorySelects();
     
-    // Sincronizar automaticamente ao carregar (buscar dados da planilha)
-    autoSyncFromSheets();
+    // Sincronizar automaticamente ao carregar
+    autoSyncAll();
+}
+
+async function autoSyncAll() {
+    try {
+        console.log('🔄 Sincronizando automaticamente ao iniciar...');
+        
+        // Tentar carregar cartões
+        const cardsLoaded = await syncCardsFromSheets();
+        
+        // Tentar carregar transações
+        const response = await fetch(`${GOOGLE_SHEETS_URL}?action=get`);
+        
+        if (response.ok) {
+            const result = await response.json();
+            
+            if (result.success && result.transactions && result.transactions.length > 0) {
+                transactions = result.transactions
+                    .filter(t => (t.data || t.date) && (t.descrição || t.description))
+                    .map((t, index) => {
+                        let dateValue = t.data || t.date || '';
+                        if (dateValue && dateValue.includes('T')) {
+                            dateValue = dateValue.split('T')[0];
+                        }
+                        
+                        return {
+                            id: Date.now() + index,
+                            type: (t.tipo || t.type || 'saida').toLowerCase().trim(),
+                            value: parseFloat(t.valor || t.value) || 0,
+                            category: (t.categoria || t.category || 'Outros').trim(),
+                            description: (t.descrição || t.description || '').trim(),
+                            date: dateValue || new Date().toISOString().split('T')[0],
+                            card: (t.cartão || t.card || '').trim()
+                        };
+                    })
+                    .sort((a, b) => new Date(b.date) - new Date(a.date));
+                
+                saveTransactions();
+            }
+        }
+        
+        // Atualizar gastos dos cartões
+        updateCardSpending();
+        
+        // Atualizar interface
+        updateDashboard();
+        renderTransactions();
+        renderCards();
+        
+        console.log('✅ Sincronização automática concluída!');
+        
+    } catch (error) {
+        console.log('ℹ️ Usando dados locais (sem conexão com planilha)');
+    }
 }
 
 // ============================================
