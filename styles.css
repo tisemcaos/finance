@@ -1119,6 +1119,42 @@ body {
     .header-actions {
         flex-direction: column;
     }
+
+/* Correção para opções do select */
+select option {
+    background: #16213e !important;
+    color: #ffffff !important;
+    padding: 8px;
+}
+
+select optgroup {
+    background: #1a1a2e !important;
+    color: #b3b3b3 !important;
+    font-weight: bold;
+    font-style: normal;
+}
+
+/* Estilo para quando o select está aberto */
+select:focus option:checked {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white !important;
+}
+
+select option:hover {
+    background: rgba(108, 99, 255, 0.3) !important;
+    color: white !important;
+}
+
+/* Corrigir select no Firefox */
+select:-moz-focusring {
+    color: transparent;
+    text-shadow: 0 0 0 #ffffff;
+}
+
+/* Corrigir select no IE/Edge */
+select::-ms-expand {
+    display: none;
+}
     
     .settings-item {
         flex-direction: column;
