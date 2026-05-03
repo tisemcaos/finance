@@ -2037,6 +2037,246 @@ function exportData() {
     showNotification('Dados exportados com sucesso!', 'success');
 }
 
+// ============================================
+// SISTEMA DE PARCELAS
+// ============================================
+
+// Mostrar/esconder campo de parcelas baseado no cartão selecionado
+function toggleInstallments() {
+    const cardSelect = document.getElementById('transCard');
+    const installmentsGroup = document.getElementById('installmentsGroup');
+    const installmentPreview = document.getElementById('installmentPreview');
+    const valuePerInstallment = document.getElementById('valuePerInstallment');
+    
+    if (cardSelect.value) {
+        // Cartão selecionado - mostrar parcelas
+        installmentsGroup.style.display = 'block';
+        document.getElementById('transInstallments').value = '1';
+        installmentPreview.style.display = 'none';
+        valuePerInstallment.style.display = 'none';
+    } else {
+        // Sem cartão - esconder parcelas
+        installmentsGroup.style.display = 'none';
+        document.getElementById('transInstallments').value = '1';
+        installmentPreview.style.display = 'none';
+        valuePerInstallment.style.display = 'none';
+    }
+    
+    updateInstallmentPreview();
+}
+
+// Atualizar preview das parcelas
+function updateInstallmentPreview() {
+    const cardSelect = document.getElementById('transCard');
+    const installmentsSelect = document.getElementById('transInstallments');
+    const valueInput = document.getElementById('transValue');
+    const dateInput = document.getElementById('transDate');
+    const preview = document.getElementById('installmentPreview');
+    const list = document.getElementById('installmentList');
+    const valuePerInstallment = document.getElementById('valuePerInstallment');
+    
+    if (!cardSelect.value || !installmentsSelect) {
+        preview.style.display = 'none';
+        valuePerInstallment.style.display = 'none';
+        return;
+    }
+    
+    const installments = parseInt(installmentsSelect.value) || 1;
+    const totalValue = parseFloat(valueInput.value) || 0;
+    const startDate = dateInput.value;
+    
+    // Mostrar valor por parcela
+    if (totalValue > 0 && installments > 1) {
+        const perInstallment = totalValue / installments;
+        valuePerInstallment.style.display = 'block';
+        valuePerInstallment.innerHTML = `Valor por parcela: <strong>${formatCurrency(perInstallment)}</strong>`;
+    } else {
+        valuePerInstallment.style.display = 'none';
+    }
+    
+    if (installments <= 1 || !startDate || totalValue <= 0) {
+        preview.style.display = 'none';
+        return;
+    }
+    
+    // Gerar lista de parcelas
+    const perInstallment = totalValue / installments;
+    const dates = [];
+    const [year, month, day] = startDate.split('-').map(Number);
+    const startDateObj = new Date(year, month - 1, day);
+    
+    let html = '';
+    for (let i = 0; i < installments; i++) {
+        const installmentDate = new Date(startDateObj);
+        installmentDate.setMonth(startDateObj.getMonth() + i);
+        
+        // Ajustar se o dia não existe no mês (ex: 31 de fevereiro)
+        const lastDayOfMonth = new Date(installmentDate.getFullYear(), installmentDate.getMonth() + 1, 0).getDate();
+        const adjustedDay = Math.min(day, lastDayOfMonth);
+        installmentDate.setDate(adjustedDay);
+        
+        const dateStr = installmentDate.toISOString().split('T')[0];
+        const monthName = installmentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+        
+        html += `
+            <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                <span>📅 ${i + 1}ª Parcela - ${monthName}</span>
+                <span style="color: #F44336; font-weight: 600;">${formatCurrency(perInstallment)}</span>
+            </div>
+        `;
+    }
+    
+    list.innerHTML = html;
+    preview.style.display = 'block';
+}
+
+// Criar transações parceladas
+function createInstallmentTransactions(baseTransaction, installments) {
+    const transactions = [];
+    const perInstallment = baseTransaction.value / installments;
+    const [year, month, day] = baseTransaction.date.split('-').map(Number);
+    const startDate = new Date(year, month - 1, day);
+    
+    for (let i = 0; i < installments; i++) {
+        const installmentDate = new Date(startDate);
+        installmentDate.setMonth(startDate.getMonth() + i);
+        
+        // Ajustar último dia do mês se necessário
+        const lastDayOfMonth = new Date(installmentDate.getFullYear(), installmentDate.getMonth() + 1, 0).getDate();
+        const adjustedDay = Math.min(day, lastDayOfMonth);
+        installmentDate.setDate(adjustedDay);
+        
+        const dateStr = installmentDate.toISOString().split('T')[0];
+        
+        transactions.push({
+            id: Date.now() + i, // IDs únicos para cada parcela
+            type: baseTransaction.type,
+            value: perInstallment,
+            category: baseTransaction.category,
+            description: `${baseTransaction.description} (${i + 1}/${installments})`,
+            date: dateStr,
+            card: baseTransaction.card
+        });
+    }
+    
+    return transactions;
+}
+
+// Sobrescrever a função handleTransactionSubmit para suportar parcelas
+const oldHandleTransactionSubmit = handleTransactionSubmit;
+handleTransactionSubmit = async function(e) {
+    e.preventDefault();
+    
+    const type = document.getElementById('transType').value;
+    const valueInput = document.getElementById('transValue').value;
+    const category = document.getElementById('transCategory').value;
+    const description = document.getElementById('transDescription').value;
+    const date = document.getElementById('transDate').value;
+    const card = document.getElementById('transCard').value;
+    const installmentsSelect = document.getElementById('transInstallments');
+    const installments = installmentsSelect ? parseInt(installmentsSelect.value) || 1 : 1;
+    
+    // Validações
+    if (!valueInput || parseFloat(valueInput) <= 0) {
+        showNotification('Por favor, insira um valor válido maior que zero.', 'error');
+        return;
+    }
+    
+    if (!category) {
+        showNotification('Por favor, selecione uma categoria.', 'error');
+        return;
+    }
+    
+    if (!description.trim()) {
+        showNotification('Por favor, insira uma descrição.', 'error');
+        return;
+    }
+    
+    if (!date) {
+        showNotification('Por favor, selecione uma data.', 'error');
+        return;
+    }
+    
+    const baseTransaction = {
+        id: Date.now(),
+        type: type,
+        value: parseFloat(valueInput),
+        category: category,
+        description: description.trim(),
+        date: date,
+        card: card
+    };
+    
+    if (card && installments > 1) {
+        // Criar parcelas
+        const installmentTransactions = createInstallmentTransactions(baseTransaction, installments);
+        transactions.unshift(...installmentTransactions);
+        
+        showNotification(
+            `✅ ${installments} parcelas de ${formatCurrency(baseTransaction.value / installments)} criadas com sucesso!`,
+            'success'
+        );
+    } else {
+        // Transação única
+        transactions.unshift(baseTransaction);
+        showNotification('✅ Transação adicionada com sucesso!', 'success');
+    }
+    
+    saveTransactions();
+    closeModal();
+    updateDashboard();
+    renderTransactions();
+    
+    // Enviar para planilha
+    const sent = await sendToSheets();
+    if (!sent) {
+        showNotification('⚠️ Dados salvos localmente, mas houve erro ao sincronizar com planilha', 'error');
+    }
+};
+
+// Atualizar a função closeModal para limpar campos de parcelas
+const oldCloseModal = closeModal;
+closeModal = function() {
+    document.getElementById('transactionModal').classList.remove('active');
+    document.getElementById('transactionForm').reset();
+    document.getElementById('transDate').value = new Date().toISOString().slice(0, 10);
+    
+    // Limpar parcelas
+    const installmentsGroup = document.getElementById('installmentsGroup');
+    const installmentPreview = document.getElementById('installmentPreview');
+    const valuePerInstallment = document.getElementById('valuePerInstallment');
+    
+    if (installmentsGroup) installmentsGroup.style.display = 'none';
+    if (installmentPreview) installmentPreview.style.display = 'none';
+    if (valuePerInstallment) valuePerInstallment.style.display = 'none';
+    
+    const installmentsSelect = document.getElementById('transInstallments');
+    if (installmentsSelect) installmentsSelect.value = '1';
+};
+
+// Atualizar openAddModal para garantir estado limpo
+const oldOpenAddModal = openAddModal;
+openAddModal = function() {
+    document.getElementById('transactionModal').classList.add('active');
+    document.getElementById('transDate').value = new Date().toISOString().slice(0, 10);
+    updateCardSelect();
+    updateCategorySelects();
+    updateTransactionTypeSelect();
+    
+    // Resetar parcelas
+    const installmentsGroup = document.getElementById('installmentsGroup');
+    const installmentPreview = document.getElementById('installmentPreview');
+    const valuePerInstallment = document.getElementById('valuePerInstallment');
+    
+    if (installmentsGroup) installmentsGroup.style.display = 'none';
+    if (installmentPreview) installmentPreview.style.display = 'none';
+    if (valuePerInstallment) valuePerInstallment.style.display = 'none';
+    
+    const installmentsSelect = document.getElementById('transInstallments');
+    if (installmentsSelect) installmentsSelect.value = '1';
+};
+
+
 function importData(file) {
     if (!file) {
         document.getElementById('importFile').click();
