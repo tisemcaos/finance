@@ -1502,6 +1502,9 @@ function applyTheme(theme) {
 // ============================================
 // GOOGLE SHEETS INTEGRATION
 // ============================================
+// ============================================
+// GOOGLE SHEETS INTEGRATION - VERSÃO CORRIGIDA
+// ============================================
 async function syncWithSheets() {
     const syncButton = document.querySelector('.btn-sync');
     if (!syncButton) return;
@@ -1513,6 +1516,75 @@ async function syncWithSheets() {
     try {
         console.log('🔄 Iniciando sincronização...');
         
+        // 1. PRIMEIRO: Baixar dados atuais da planilha
+        console.log('📥 Baixando dados atuais da planilha...');
+        const downloadResponse = await fetch(`${GOOGLE_SHEETS_URL}?action=get`);
+        
+        if (!downloadResponse.ok) {
+            throw new Error(`Erro HTTP ${downloadResponse.status} ao baixar dados`);
+        }
+        
+        const downloadResult = await downloadResponse.json();
+        console.log('💾 Dados recebidos da planilha:', downloadResult);
+        
+        // 2. Converter dados da planilha para o formato local
+        let sheetTransactions = [];
+        if (downloadResult.success && downloadResult.transactions && downloadResult.transactions.length > 0) {
+            sheetTransactions = downloadResult.transactions.map((t, index) => {
+                // Tratar a data (remover timestamp, pegar só a data)
+                let dateValue = t.data || t.date || '';
+                if (dateValue && dateValue.includes('T')) {
+                    dateValue = dateValue.split('T')[0]; // Pega só YYYY-MM-DD
+                }
+                
+                return {
+                    id: Date.now() + index,
+                    type: (t.tipo || t.type || 'saida').toLowerCase(),
+                    value: parseFloat(t.valor || t.value) || 0,
+                    category: t.categoria || t.category || 'Outros',
+                    description: t.descrição || t.description || '',
+                    date: dateValue,
+                    card: t.cartão || t.card || ''
+                };
+            });
+            
+            console.log('📊 Dados convertidos da planilha:', sheetTransactions);
+        }
+        
+        // 3. MESCLAR: Manter transações locais que não estão na planilha
+        const localTransactions = [...transactions];
+        
+        // Identificar transações que já existem na planilha (por data + descrição + valor)
+        const existingKeys = new Set(
+            sheetTransactions.map(t => `${t.date}_${t.description}_${t.value}`)
+        );
+        
+        // Adicionar transações locais que não existem na planilha
+        const missingInSheet = localTransactions.filter(t => 
+            !existingKeys.has(`${t.date}_${t.description}_${t.value}`)
+        );
+        
+        console.log(`📋 Transações locais: ${localTransactions.length}`);
+        console.log(`📋 Transações na planilha: ${sheetTransactions.length}`);
+        console.log(`📋 Transações faltando na planilha: ${missingInSheet.length}`);
+        
+        // 4. Combinar: planilha + transações locais faltantes
+        const allTransactions = [...sheetTransactions, ...missingInSheet];
+        
+        // Ordenar por data (mais recente primeiro)
+        allTransactions.sort((a, b) => {
+            if (!a.date) return 1;
+            if (!b.date) return -1;
+            return new Date(b.date) - new Date(a.date);
+        });
+        
+        // 5. Atualizar dados locais
+        transactions = allTransactions;
+        saveTransactions();
+        
+        console.log('✅ Dados mesclados:', transactions.length, 'transações');
+        
+        // 6. AGORA ENVIAR todos os dados mesclados de volta para a planilha
         const dataToSend = {
             action: 'sync',
             data: transactions.map(t => ({
@@ -1525,77 +1597,106 @@ async function syncWithSheets() {
             }))
         };
         
-        console.log('📤 Enviando', dataToSend.data.length, 'transações...');
+        console.log('📤 Enviando dados mesclados para a planilha...');
         
-        const uploadResponse = await fetch(GOOGLE_SHEETS_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(dataToSend)
-        });
+        // Tentar enviar via POST
+        let uploadSuccess = false;
         
-        if (!uploadResponse.ok) {
-            throw new Error(`Erro HTTP ${uploadResponse.status}: ${uploadResponse.statusText}`);
-        }
-        
-        const uploadResult = await uploadResponse.json();
-        console.log('📥 Resposta upload:', uploadResult);
-        
-        if (!uploadResult.success) {
-            throw new Error(uploadResult.error || 'Erro desconhecido no servidor');
-        }
-        
-        console.log('📥 Baixando dados atualizados...');
-        const downloadResponse = await fetch(`${GOOGLE_SHEETS_URL}?action=get`);
-        
-        if (!downloadResponse.ok) {
-            throw new Error(`Erro HTTP ${downloadResponse.status} ao baixar dados`);
-        }
-        
-        const downloadResult = await downloadResponse.json();
-        console.log('💾 Dados recebidos:', downloadResult);
-        
-        if (downloadResult.success && downloadResult.transactions) {
-            if (downloadResult.transactions.length > 0) {
-                transactions = downloadResult.transactions.map((t, index) => ({
-                    id: Date.now() + index,
-                    type: (t.tipo || t.type || 'saida').toLowerCase(),
-                    value: parseFloat(t.valor || t.value) || 0,
-                    category: t.categoria || t.category || 'Outros',
-                    description: t.descrição || t.description || '',
-                    date: t.data || t.date || '',
-                    card: t.cartão || t.card || ''
-                }));
-                
-                saveTransactions();
-                updateDashboard();
-                renderTransactions();
-                updateCardSpending();
+        try {
+            const uploadResponse = await fetch(GOOGLE_SHEETS_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(dataToSend)
+            });
+            
+            if (uploadResponse.ok) {
+                const uploadResult = await uploadResponse.json();
+                console.log('📥 Resposta upload:', uploadResult);
+                uploadSuccess = uploadResult.success;
             }
+        } catch (postError) {
+            console.log('⚠️ Erro no POST, tentando via GET...');
         }
         
-        showNotification(`✅ Sincronizado com sucesso!\n${uploadResult.count || transactions.length} transações`, 'success');
-        console.log('✨ Sincronização concluída!');
+        // Se falhar, tentar via GET
+        if (!uploadSuccess) {
+            const dataParam = encodeURIComponent(JSON.stringify(dataToSend.data));
+            const getUrl = `${GOOGLE_SHEETS_URL}?action=sync&data=${dataParam}`;
+            
+            const getResponse = await fetch(getUrl);
+            const getResult = await getResponse.json();
+            console.log('📥 Resposta GET:', getResult);
+            uploadSuccess = getResult.success;
+        }
+        
+        // 7. Atualizar interface
+        updateDashboard();
+        renderTransactions();
+        updateCardSpending();
+        
+        if (uploadSuccess) {
+            showNotification(
+                `✅ Sincronização completa!\n${transactions.length} transações sincronizadas`,
+                'success'
+            );
+        } else {
+            showNotification(
+                `⚠️ Dados locais atualizados, mas houve erro ao enviar para planilha`,
+                'error'
+            );
+        }
+        
+        console.log('✨ Processo de sincronização concluído!');
+        console.log(`📊 Total de transações: ${transactions.length}`);
         
     } catch (error) {
         console.error('❌ Erro na sincronização:', error);
         
-        let mensagem = '❌ Erro ao sincronizar\n\n';
-        mensagem += `Erro: ${error.message}\n\n`;
-        mensagem += 'Verifique:\n';
-        mensagem += '1. Se o Google Apps Script foi implantado\n';
-        mensagem += '2. Se a URL está correta no código\n';
-        mensagem += '3. Se a planilha "Transações" existe\n';
-        
-        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-            mensagem += '\nPossível erro de CORS. Teste a URL no navegador:\n';
-            mensagem += `${GOOGLE_SHEETS_URL}?action=get`;
+        // Tentar apenas baixar os dados em caso de erro
+        try {
+            console.log('🔄 Tentando apenas baixar dados...');
+            const response = await fetch(`${GOOGLE_SHEETS_URL}?action=get`);
+            const result = await response.json();
+            
+            if (result.success && result.transactions && result.transactions.length > 0) {
+                transactions = result.transactions.map((t, index) => {
+                    let dateValue = t.data || t.date || '';
+                    if (dateValue && dateValue.includes('T')) {
+                        dateValue = dateValue.split('T')[0];
+                    }
+                    
+                    return {
+                        id: Date.now() + index,
+                        type: (t.tipo || t.type || 'saida').toLowerCase(),
+                        value: parseFloat(t.valor || t.value) || 0,
+                        category: t.categoria || t.category || 'Outros',
+                        description: t.descrição || t.description || '',
+                        date: dateValue,
+                        card: t.cartão || t.card || ''
+                    };
+                });
+                
+                saveTransactions();
+                updateDashboard();
+                renderTransactions();
+                
+                showNotification('✅ Dados baixados da planilha com sucesso!', 'success');
+                console.log('📊 Dados atualizados da planilha:', transactions.length, 'transações');
+            }
+        } catch (downloadError) {
+            console.error('❌ Erro ao baixar dados:', downloadError);
+            alert(
+                '❌ Erro ao sincronizar\n\n' +
+                'Os dados locais foram preservados.\n\n' +
+                'Verifique:\n' +
+                '1. Se a URL do Google Sheets está correta\n' +
+                '2. Se a planilha "Transações" existe\n' +
+                '3. Se o Apps Script está implantado\n\n' +
+                `URL: ${GOOGLE_SHEETS_URL}?action=get`
+            );
         }
-        
-        alert(mensagem);
-        console.log('🔗 URL para testar:', `${GOOGLE_SHEETS_URL}?action=get`);
-        
     } finally {
         syncButton.innerHTML = originalHTML;
         syncButton.disabled = false;
