@@ -1519,7 +1519,9 @@ function deleteCardSettings(id) {
     }
 }
 
-function handleCardSettingsSubmit(e) {
+// Sobrescrever handleCardSettingsSubmit para enviar à planilha
+const oldHandleCardSettingsSubmit = handleCardSettingsSubmit;
+handleCardSettingsSubmit = async function(e) {
     e.preventDefault();
     
     const editId = document.getElementById('cardSettingsEditId').value;
@@ -1543,21 +1545,52 @@ function handleCardSettingsSubmit(e) {
         if (index !== -1) {
             cardData.spent = cards[index].spent;
             cards[index] = { ...cards[index], ...cardData };
-            showNotification('Cartão atualizado com sucesso!', 'success');
         }
     } else {
         cards.push({
             id: Date.now(),
             ...cardData
         });
-        showNotification('Cartão adicionado com sucesso!', 'success');
     }
     
     saveCards();
     closeCardSettingsModal();
     renderCardsSettings();
     renderCards();
-}
+    
+    // Enviar para planilha
+    showNotification('Salvando cartão na planilha...', 'success');
+    const sent = await sendCardsToSheets();
+    
+    if (sent) {
+        showNotification('✅ Cartão salvo na planilha com sucesso!', 'success');
+    } else {
+        showNotification('⚠️ Cartão salvo localmente, mas houve erro ao enviar para planilha', 'error');
+    }
+};
+
+// Sobrescrever deleteCardSettings para sincronizar
+const oldDeleteCardSettings = deleteCardSettings;
+deleteCardSettings = async function(id) {
+    const card = cards.find(c => c.id === id);
+    if (!card) return;
+    
+    if (confirm(`Tem certeza que deseja excluir o cartão "${card.name}"?`)) {
+        cards = cards.filter(c => c.id !== id);
+        saveCards();
+        renderCardsSettings();
+        renderCards();
+        
+        // Enviar alteração para planilha
+        const sent = await sendCardsToSheets();
+        
+        if (sent) {
+            showNotification('✅ Cartão removido da planilha com sucesso!', 'success');
+        } else {
+            showNotification('⚠️ Cartão removido localmente, mas houve erro ao atualizar planilha', 'error');
+        }
+    }
+};
 
 // ============================================
 // SETTINGS - GENERAL
