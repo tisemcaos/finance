@@ -43,11 +43,14 @@
                 </a>
             </nav>
             <div class="sidebar-footer">
-    <button class="btn-sync" onclick="syncWithSheets()">
-        <i class="fas fa-cloud-download-alt"></i> Carregar da Planilha
+    <button class="btn-sync" onclick="fullSync()">
+        <i class="fas fa-sync"></i> Sincronizar Tudo
     </button>
-    <button class="btn-sync" onclick="forceUploadToSheets()" style="margin-top: 8px; background: var(--gradient-2);">
-        <i class="fas fa-cloud-upload-alt"></i> Enviar para Planilha
+    <button class="btn-sync" onclick="syncWithSheets()" style="background: var(--gradient-2); margin-top: 8px;">
+        <i class="fas fa-cloud-download-alt"></i> Carregar Transações
+    </button>
+    <button class="btn-sync" onclick="syncCardsFromSheets().then(() => { renderCards(); renderCardsSettings(); showNotification('Cartões atualizados!', 'success'); })" style="background: var(--gradient-3); margin-top: 8px;">
+        <i class="fas fa-credit-card"></i> Carregar Cartões
     </button>
     <a href="#" class="sheets-link" target="_blank" id="sheetsLink">
         <i class="fas fa-table"></i> Abrir Planilha
