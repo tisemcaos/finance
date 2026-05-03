@@ -1,5 +1,5 @@
 // Configuração -Substitua pela URL do seu Google Sheets
-const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbyvoodebHP9DhXKBe8a-MypidkLKHb6i0_KBbyFNBRtsjQM7HuRrj8w9lNuyyW_a3GG/exec';
+const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbyuo2R6qdZZ9ylyLHuZah6VBNiBybCJ8gIfQ8lPWzv_kQx9GRk8mIkDtBWQbqY4dUkv/exec';
 const SHEETS_LINK = 'https://docs.google.com/spreadsheets/d/1DdiyEwLlik9OvBA36xP9NYaTG_kTiDpQyDnXthCYqew/edit?usp=sharing';
 
 // ============================================
