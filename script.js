@@ -1,4 +1,4 @@
-// Configuração
+// Configurações
 const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbyRn-gr6CCOtZCuvItFn8M8dP6Xdvie4hTj42szKv5qodCgNdb72m7sprVGZVEUHsh-/exec';
 const SHEETS_LINK = 'https://docs.google.com/spreadsheets/d/1DdiyEwLlik9OvBA36xP9NYaTG_kTiDpQyDnXthCYqew/edit?usp=sharing';
 
