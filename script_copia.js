@@ -1,5 +1,5 @@
-// Configuração
-const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxNRw4UzB6uV8WE_80VrISmarpiUbNE8mqvv2AMv10wU--azvMmkhqRqlofLm6XRLfH/exec';
+// Configurações
+const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbyRn-gr6CCOtZCuvItFn8M8dP6Xdvie4hTj42szKv5qodCgNdb72m7sprVGZVEUHsh-/exec';
 const SHEETS_LINK = 'https://docs.google.com/spreadsheets/d/1DdiyEwLlik9OvBA36xP9NYaTG_kTiDpQyDnXthCYqew/edit?usp=sharing';
 
 // Estado
@@ -98,6 +98,22 @@ function navigateTo(page) {
     }, 100);
 }
 
+
+
+//  Progresso do Mês 
+
+function updateMonthProgress() {
+    const now = new Date();
+    const currentDay = now.getDate();
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const progress = (currentDay / lastDay) * 100;
+    
+    document.getElementById('daysProgress').textContent = `${progress.toFixed(1)}%`;
+    document.getElementById('monthProgressBar').style.width = `${progress}%`;
+    document.getElementById('currentDay').textContent = `Dia ${currentDay}`;
+    document.getElementById('lastDay').textContent = `Dia ${lastDay}`;
+}
+
 // Dashboard
 function updateDashboard() {
     const selectedMonth = document.getElementById('monthFilter').value;
@@ -107,7 +123,7 @@ function updateDashboard() {
     const expense = monthTransactions.filter(t => t.type === 'saida').reduce((sum, t) => sum + parseFloat(t.value), 0);
     const balance = income - expense;
     const savingsRate = income > 0 ? ((balance / income) * 100) : 0;
-    
+	generateSmartAnalysis(); // Adicione esta linha
     document.getElementById('totalIncome').textContent = formatCurrency(income);
     document.getElementById('totalExpense').textContent = formatCurrency(expense);
     document.getElementById('totalBalance').textContent = formatCurrency(balance);
@@ -268,7 +284,7 @@ function renderTransactions() {
     if (!tbody) return;
     
     if (transactions.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;"><p style="color:#b3b3b3;">Nenhuma transação</p></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;"><p style="color:#b3b3b3;">Nenhuma transação</p></td></tr>`;
         return;
     }
     
@@ -327,7 +343,7 @@ function filterTransactions() {
     
     const tbody = document.getElementById('transactionsBody');
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;"><p style="color:#b3b3b3;">Nenhum resultado</p></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;"><p style="color:#b3b3b3;">Nenhum resultado</p></td></tr>`;
         return;
     }
     tbody.innerHTML = filtered.map(t => `
@@ -476,7 +492,36 @@ function handleTypeSubmit(e) {
 function updateTransactionTypeSelect() {
     const select = document.getElementById('transType');
     if (!select) return;
-    select.innerHTML = settings.types.filter(t => t.flow !== 'ambos').map(t => `<option value="${t.flow}">${t.name}</option>`).join('');
+    
+    // Pegar tipos das configurações
+    const saidaTypes = settings.types.filter(t => t.flow === 'saida');
+    const entradaTypes = settings.types.filter(t => t.flow === 'entrada');
+    
+    // Construir HTML com Saída primeiro (selecionado por padrão)
+    let html = '';
+    
+    // Opções de Saída primeiro
+    if (saidaTypes.length > 0) {
+        html += saidaTypes.map(t => 
+            `<option value="${t.flow}">${t.name}</option>`
+        ).join('');
+    } else {
+        html += '<option value="saida">Saída</option>';
+    }
+    
+    // Depois opções de Entrada
+    if (entradaTypes.length > 0) {
+        html += entradaTypes.map(t => 
+            `<option value="${t.flow}">${t.name}</option>`
+        ).join('');
+    } else {
+        html += '<option value="entrada">Entrada</option>';
+    }
+    
+    select.innerHTML = html;
+    
+    // Garantir que "Saída" esteja selecionado por padrão
+    select.value = 'saida';
 }
 
 // Settings Categories
@@ -724,19 +769,95 @@ async function sendToSheets() {
                 category: t.category || 'Outros',
                 description: t.description || '',
                 value: parseFloat(t.value) || 0,
-                card: t.card || ''
+                card: t.card || '',
+                debtor: t.debtor || ''  // ADICIONE ESTA LINHA
             }))
         };
         
         let success = false;
         try {
-            const resp = await fetch(GOOGLE_SHEETS_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+            const resp = await fetch(GOOGLE_SHEETS_URL, { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify(data) 
+            });
+            if (resp.ok) { 
+                const r = await resp.json(); 
+                success = r.success; 
+                console.log('✅ POST sync:', r);
+            }
+        } catch(e) {
+            console.log('⚠️ POST falhou, tentando GET...');
+        }
+        
+        if (!success) {
+            const param = encodeURIComponent(JSON.stringify(data.data));
+            const resp = await fetch(`${GOOGLE_SHEETS_URL}?action=sync&data=${param}`);
+            const r = await resp.json();
+            success = r.success;
+            console.log('✅ GET sync:', r);
+        }
+        return success;
+    } catch(e) { 
+        console.error('❌ Erro ao enviar:', e);
+        return false; 
+    }
+}
+
+// Sincronizar devedores
+async function syncDebtorsFromSheets() {
+    try {
+        console.log('📥 Baixando devedores...');
+        const resp = await fetch(`${GOOGLE_SHEETS_URL}?action=getDebtors`);
+        const result = await resp.json();
+        
+        if (result.success && result.debtors && result.debtors.length > 0) {
+            debtors = result.debtors.map((d, i) => ({
+                id: Date.now() + i,
+                name: d.nome || d.name || '',
+                phone: d.telefone || d.phone || '',
+                email: d.email || '',
+                notes: d.observações || d.observacoes || d.notes || '',
+                totalOwed: parseFloat(d['total devido'] || d.totalOwed) || 0
+            }));
+            saveDebtors();
+            renderDebtors();
+            updateDebtorSelect();
+        }
+        console.log('✅ Devedores carregados:', debtors.length);
+        return true;
+    } catch(e) {
+        console.error('❌ Erro ao baixar devedores:', e);
+        return false;
+    }
+}
+
+async function sendDebtorsToSheets() {
+    try {
+        const data = {
+            action: 'syncDebtors',
+            data: debtors.map(d => ({
+                name: d.name || '',
+                phone: d.phone || '',
+                email: d.email || '',
+                notes: d.notes || '',
+                totalOwed: calculateDebtorTotal(d.name)
+            }))
+        };
+        
+        let success = false;
+        try {
+            const resp = await fetch(GOOGLE_SHEETS_URL, { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify(data) 
+            });
             if (resp.ok) { const r = await resp.json(); success = r.success; }
         } catch(e) {}
         
         if (!success) {
             const param = encodeURIComponent(JSON.stringify(data.data));
-            const resp = await fetch(`${GOOGLE_SHEETS_URL}?action=sync&data=${param}`);
+            const resp = await fetch(`${GOOGLE_SHEETS_URL}?action=syncDebtors&data=${param}`);
             const r = await resp.json();
             success = r.success;
         }
@@ -808,11 +929,14 @@ async function fullSync() {
     btns.forEach(b => { b.disabled = true; b.style.opacity = '0.7'; });
     
     try {
+        await syncDebtorsFromSheets();
         await syncCardsFromSheets();
         await syncWithSheets();
         updateDashboard();
         renderTransactions();
         renderCards();
+        renderDebtors();
+        renderDebtorsSummary();
         showNotification('✅ Sincronização completa!', 'success');
     } catch(e) {
         showNotification('❌ Erro na sincronização', 'error');
@@ -823,7 +947,13 @@ async function fullSync() {
 
 async function autoSyncAll() {
     try {
+        // Sincronizar devedores
+        await syncDebtorsFromSheets();
+        
+        // Sincronizar cartões
         await syncCardsFromSheets();
+        
+        // Sincronizar transações
         const resp = await fetch(`${GOOGLE_SHEETS_URL}?action=get`);
         const result = await resp.json();
         
@@ -840,16 +970,20 @@ async function autoSyncAll() {
                         category: (t.categoria || t.category || 'Outros').trim(),
                         description: (t.descrição || t.description || '').trim(),
                         date: dateValue || new Date().toISOString().split('T')[0],
-                        card: (t.cartão || t.card || '').trim()
+                        card: (t.cartão || t.card || '').trim(),
+                        debtor: (t.devedor || t.debtor || '').trim() // ADICIONE ESTA LINHA
                     };
                 })
                 .sort((a, b) => new Date(b.date) - new Date(a.date));
             saveTransactions();
             updateCardSpending();
         }
+        
         updateDashboard();
         renderTransactions();
         renderCards();
+        renderDebtors();
+        renderDebtorsSummary();
         console.log('✅ Auto sync concluído');
     } catch(e) {
         console.log('ℹ️ Usando dados locais');
@@ -902,6 +1036,1329 @@ function updateInstallmentPreview() {
     list.innerHTML = html;
     preview.style.display = 'block';
 }
+
+// ============================================
+// SISTEMA DE DASHBOARD MODULAR
+// ============================================
+
+let currentDashboard = 'overview';
+let dashboardChartType = 'bar';
+let dashboardDateStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+let dashboardDateEnd = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0];
+
+// Toggle Submenu
+function toggleSubmenu(event, submenuId) {
+    event.preventDefault();
+    const parent = event.currentTarget;
+    const submenu = document.getElementById(submenuId);
+    
+    parent.classList.toggle('active');
+    submenu.classList.toggle('active');
+}
+
+// Navegação do Dashboard
+document.addEventListener('click', function(e) {
+    const submenuItem = e.target.closest('.submenu-item');
+    if (submenuItem) {
+        e.preventDefault();
+        
+        // Atualizar ativo
+        document.querySelectorAll('.submenu-item').forEach(item => item.classList.remove('active'));
+        submenuItem.classList.add('active');
+        
+        // Ativar página dashboard
+        navigateTo('dashboard');
+        
+        // Carregar dashboard específico
+        const dashboardType = submenuItem.dataset.dashboard;
+        currentDashboard = dashboardType;
+        loadDashboard(dashboardType);
+    }
+});
+
+// Atualizar navigateTo para incluir home
+const oldNavigateTo = navigateTo;
+navigateTo = function(page) {
+    document.querySelectorAll('.nav-item').forEach(item => {
+        if (!item.classList.contains('nav-parent')) {
+            item.classList.toggle('active', item.dataset.page === page);
+        }
+    });
+    
+    document.querySelectorAll('.page').forEach(p => {
+        p.classList.toggle('active', p.id === `${page}-page`);
+    });
+    
+    setTimeout(() => {
+        switch(page) {
+            case 'home':
+                updateDashboard();
+                initializeCharts();
+                break;
+            case 'dashboard':
+                loadDashboard(currentDashboard);
+                break;
+            case 'transactions':
+                renderTransactions();
+                break;
+            case 'cards':
+                renderCards();
+                break;
+            case 'budget':
+                renderBudgets();
+                break;
+            case 'settings':
+                renderTypes();
+                renderCategories();
+                renderCardsSettings();
+                document.getElementById('currencySetting').value = settings.currency || 'BRL';
+                document.getElementById('themeSetting').value = settings.theme || 'dark';
+                break;
+        }
+    }, 100);
+};
+
+// Carregar Dashboard Específico
+function loadDashboard(type) {
+    const container = document.getElementById('dashboardContainer');
+    if (!container) return;
+    
+    // Filtrar transações pelo período
+    const filteredTransactions = transactions.filter(t => 
+        t.date >= dashboardDateStart && t.date <= dashboardDateEnd
+    );
+    
+    const titles = {
+        'overview': 'Visão Geral',
+        'debtors': 'Análise de Devedores',
+        'cards': 'Análise de Cartões',
+        'income': 'Análise de Entradas',
+        'expense': 'Análise de Saídas',
+        'categories': 'Análise por Categorias',
+        'monthly': 'Comparativo Mensal'
+    };
+    
+    const icons = {
+        'overview': 'chart-line',
+        'debtors': 'users',
+        'cards': 'credit-card',
+        'income': 'arrow-up',
+        'expense': 'arrow-down',
+        'categories': 'tags',
+        'monthly': 'calendar-alt'
+    };
+    
+    let html = `
+        <div class="dashboard-container">
+            <div class="dashboard-header">
+                <h2 class="dashboard-title">
+                    <i class="fas fa-${icons[type]}"></i> ${titles[type]}
+                </h2>
+                <div class="dashboard-filters">
+                    <div class="date-range">
+                        <input type="date" id="dashboardDateStart" value="${dashboardDateStart}" onchange="updateDashboardDates()">
+                        <span>até</span>
+                        <input type="date" id="dashboardDateEnd" value="${dashboardDateEnd}" onchange="updateDashboardDates()">
+                    </div>
+                    <div class="chart-type-selector">
+                        <button class="chart-type-btn ${dashboardChartType === 'bar' ? 'active' : ''}" onclick="changeChartType('bar')">
+                            <i class="fas fa-chart-bar"></i>
+                        </button>
+                        <button class="chart-type-btn ${dashboardChartType === 'pie' ? 'active' : ''}" onclick="changeChartType('pie')">
+                            <i class="fas fa-chart-pie"></i>
+                        </button>
+                        <button class="chart-type-btn ${dashboardChartType === 'line' ? 'active' : ''}" onclick="changeChartType('line')">
+                            <i class="fas fa-chart-line"></i>
+                        </button>
+                        <button class="chart-type-btn ${dashboardChartType === 'doughnut' ? 'active' : ''}" onclick="changeChartType('doughnut')">
+                            <i class="fas fa-circle"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div id="dashboardSummaryCards" class="dashboard-summary-cards"></div>
+            <div class="dashboard-grid">
+                <div class="chart-card full-width">
+                    <h3 id="mainChartTitle">Gráfico Principal</h3>
+                    <canvas id="mainDashboardChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card full-width" style="margin-top: 20px;">
+                <h3>Detalhamento</h3>
+                <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+                    <table class="detail-table">
+                        <thead id="detailTableHead"></thead>
+                        <tbody id="detailTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="chart-card full-width" style="margin-top: 20px;">
+                <h3><i class="fas fa-robot"></i> Análise Inteligente</h3>
+                <div id="smartDashboardAnalysis" style="padding: 16px; color: var(--text-secondary); line-height: 1.8;"></div>
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+    
+    // Carregar dados específicos
+    switch(type) {
+        case 'debtors':
+            loadDebtorsDashboard(filteredTransactions);
+            break;
+        case 'cards':
+            loadCardsDashboard(filteredTransactions);
+            break;
+        case 'income':
+            loadIncomeDashboard(filteredTransactions);
+            break;
+        case 'expense':
+            loadExpenseDashboard(filteredTransactions);
+            break;
+        case 'categories':
+            loadCategoriesDashboard(filteredTransactions);
+            break;
+        case 'monthly':
+            loadMonthlyDashboard(filteredTransactions);
+            break;
+        default:
+            loadOverviewDashboard(filteredTransactions);
+    }
+}
+
+function updateDashboardDates() {
+    dashboardDateStart = document.getElementById('dashboardDateStart').value;
+    dashboardDateEnd = document.getElementById('dashboardDateEnd').value;
+    loadDashboard(currentDashboard);
+}
+
+function changeChartType(type) {
+    dashboardChartType = type;
+    document.querySelectorAll('.chart-type-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent.includes(type === 'bar' ? 'bar' : type === 'pie' ? 'pie' : type === 'line' ? 'line' : 'circle'));
+    });
+    loadDashboard(currentDashboard);
+}
+
+// ============================================
+// DASHBOARD DE DEVEDORES
+// ============================================
+function loadDebtorsDashboard(transactions) {
+    const debtorTransactions = transactions.filter(t => t.debtor && t.type === 'saida');
+    
+    // Resumo
+    const debtorSummary = {};
+    debtorTransactions.forEach(t => {
+        if (!debtorSummary[t.debtor]) {
+            debtorSummary[t.debtor] = { total: 0, count: 0, lastDate: null };
+        }
+        debtorSummary[t.debtor].total += parseFloat(t.value);
+        debtorSummary[t.debtor].count++;
+        if (!debtorSummary[t.debtor].lastDate || t.date > debtorSummary[t.debtor].lastDate) {
+            debtorSummary[t.debtor].lastDate = t.date;
+        }
+    });
+    
+    const totalOwed = Object.values(debtorSummary).reduce((s, d) => s + d.total, 0);
+    const uniqueDebtors = Object.keys(debtorSummary).length;
+    const avgPerDebtor = uniqueDebtors > 0 ? totalOwed / uniqueDebtors : 0;
+    
+    // Cards de resumo
+    document.getElementById('dashboardSummaryCards').innerHTML = `
+        <div class="summary-mini-card">
+            <div class="mini-icon" style="background: rgba(244, 67, 54, 0.1); color: #F44336;"><i class="fas fa-hand-holding-usd"></i></div>
+            <div class="mini-label">Total Devido</div>
+            <div class="mini-value" style="color: #F44336;">${formatCurrency(totalOwed)}</div>
+        </div>
+        <div class="summary-mini-card">
+            <div class="mini-icon" style="background: rgba(255, 152, 0, 0.1); color: #FF9800;"><i class="fas fa-users"></i></div>
+            <div class="mini-label">Devedores</div>
+            <div class="mini-value">${uniqueDebtors}</div>
+        </div>
+        <div class="summary-mini-card">
+            <div class="mini-icon" style="background: rgba(33, 150, 243, 0.1); color: #2196F3;"><i class="fas fa-calculator"></i></div>
+            <div class="mini-label">Média por Devedor</div>
+            <div class="mini-value">${formatCurrency(avgPerDebtor)}</div>
+        </div>
+        <div class="summary-mini-card">
+            <div class="mini-icon" style="background: rgba(76, 175, 80, 0.1); color: #4CAF50;"><i class="fas fa-receipt"></i></div>
+            <div class="mini-label">Transações</div>
+            <div class="mini-value">${debtorTransactions.length}</div>
+        </div>
+    `;
+    
+    // Gráfico
+    const sorted = Object.entries(debtorSummary).sort(([,a], [,b]) => b.total - a.total);
+    const labels = sorted.map(([name]) => name);
+    const data = sorted.map(([,d]) => d.total);
+    
+    const canvas = document.getElementById('mainDashboardChart');
+    if (canvas) {
+        const ctx = canvas.getContext('2d');
+        new Chart(ctx, {
+            type: dashboardChartType,
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Valor Devido',
+                    data: data,
+                    backgroundColor: ['#F44336', '#FF9800', '#FFEB3B', '#4CAF50', '#2196F3', '#9C27B0', '#E91E63', '#00BCD4'],
+                    borderWidth: 2,
+                    borderColor: '#16213e'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { color: '#b3b3b3' } }
+                }
+            }
+        });
+    }
+    
+    // Tabela de detalhes
+    document.getElementById('detailTableHead').innerHTML = `
+        <tr><th>Devedor</th><th>Total Devido</th><th>Qtd. Transações</th><th>Última Transação</th><th>% do Total</th></tr>
+    `;
+    
+    document.getElementById('detailTableBody').innerHTML = sorted.map(([name, d]) => `
+        <tr>
+            <td><span class="debtor-badge"><i class="fas fa-user"></i> ${name}</span></td>
+            <td style="color: #F44336; font-weight: 600;">${formatCurrency(d.total)}</td>
+            <td>${d.count}</td>
+            <td>${d.lastDate ? formatDate(d.lastDate) : '-'}</td>
+            <td>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div class="progress-bar" style="flex: 1; height: 6px;">
+                        <div class="progress-fill" style="width: ${totalOwed > 0 ? (d.total/totalOwed)*100 : 0}%; background: #F44336;"></div>
+                    </div>
+                    <span>${totalOwed > 0 ? ((d.total/totalOwed)*100).toFixed(1) : 0}%</span>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+    
+    // Análise inteligente
+    document.getElementById('smartDashboardAnalysis').innerHTML = `
+        <p>📊 <strong>${uniqueDebtors} pessoa(s)</strong> estão te devendo um total de <strong style="color:#F44336;">${formatCurrency(totalOwed)}</strong> no período selecionado.</p>
+        <p>🔝 O maior devedor é <strong>${sorted[0] ? sorted[0][0] : 'N/A'}</strong> com <strong style="color:#F44336;">${sorted[0] ? formatCurrency(sorted[0][1].total) : 'R$ 0,00'}</strong>.</p>
+        <p>📅 A média por devedor é de <strong>${formatCurrency(avgPerDebtor)}</strong>.</p>
+        ${totalOwed > 1000 ? '<p>⚠️ <strong style="color:#FF9800;">Atenção:</strong> O valor total devido é significativo. Considere cobrar os devedores.</p>' : ''}
+    `;
+}
+
+// ============================================
+// DASHBOARD DE CARTÕES
+// ============================================
+function loadCardsDashboard(transactions) {
+    const cardTransactions = transactions.filter(t => t.card && t.type === 'saida');
+    
+    const cardSummary = {};
+    cardTransactions.forEach(t => {
+        if (!cardSummary[t.card]) {
+            cardSummary[t.card] = { total: 0, count: 0 };
+        }
+        cardSummary[t.card].total += parseFloat(t.value);
+        cardSummary[t.card].count++;
+    });
+    
+    const totalSpent = Object.values(cardSummary).reduce((s, c) => s + c.total, 0);
+    
+    // Resumo
+    document.getElementById('dashboardSummaryCards').innerHTML = `
+        <div class="summary-mini-card">
+            <div class="mini-icon" style="background: rgba(244, 67, 54, 0.1); color: #F44336;"><i class="fas fa-credit-card"></i></div>
+            <div class="mini-label">Total Gasto</div>
+            <div class="mini-value" style="color: #F44336;">${formatCurrency(totalSpent)}</div>
+        </div>
+        <div class="summary-mini-card">
+            <div class="mini-icon" style="background: rgba(33, 150, 243, 0.1); color: #2196F3;"><i class="fas fa-shopping-cart"></i></div>
+            <div class="mini-label">Transações</div>
+            <div class="mini-value">${cardTransactions.length}</div>
+        </div>
+        <div class="summary-mini-card">
+            <div class="mini-icon" style="background: rgba(76, 175, 80, 0.1); color: #4CAF50;"><i class="fas fa-percent"></i></div>
+            <div class="mini-label">Cartão mais usado</div>
+            <div class="mini-value" style="font-size: 16px;">${Object.entries(cardSummary).sort(([,a],[,b]) => b.total - a.total)[0]?.[0] || 'N/A'}</div>
+        </div>
+    `;
+    
+    // Gráfico
+    const sorted = Object.entries(cardSummary).sort(([,a], [,b]) => b.total - a.total);
+    const canvas = document.getElementById('mainDashboardChart');
+    if (canvas) {
+        new Chart(canvas.getContext('2d'), {
+            type: dashboardChartType,
+            data: {
+                labels: sorted.map(([name]) => name),
+                datasets: [{
+                    label: 'Gastos por Cartão',
+                    data: sorted.map(([,d]) => d.total),
+                    backgroundColor: cards.map(c => c.color || '#6C63FF'),
+                    borderWidth: 2,
+                    borderColor: '#16213e'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { color: '#b3b3b3' } } }
+            }
+        });
+    }
+    
+    // Tabela
+    document.getElementById('detailTableHead').innerHTML = `
+        <tr><th>Cartão</th><th>Total Gasto</th><th>Transações</th><th>Limite</th><th>% Utilizado</th></tr>
+    `;
+    
+    document.getElementById('detailTableBody').innerHTML = sorted.map(([name, d]) => {
+        const card = cards.find(c => c.name === name);
+        const limit = card ? card.limit : 0;
+        const pct = limit > 0 ? (d.total / limit) * 100 : 0;
+        return `
+            <tr>
+                <td><span class="card-badge">💳 ${name}</span></td>
+                <td style="color: #F44336; font-weight: 600;">${formatCurrency(d.total)}</td>
+                <td>${d.count}</td>
+                <td>${formatCurrency(limit)}</td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div class="progress-bar" style="flex: 1; height: 6px;">
+                            <div class="progress-fill" style="width: ${Math.min(pct, 100)}%; background: ${pct > 80 ? '#F44336' : pct > 50 ? '#FF9800' : '#4CAF50'};"></div>
+                        </div>
+                        <span>${pct.toFixed(1)}%</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    // Análise
+    document.getElementById('smartDashboardAnalysis').innerHTML = `
+        <p>💳 Foram realizadas <strong>${cardTransactions.length} transações</strong> com cartão no período.</p>
+        <p>💰 O gasto total com cartões foi de <strong style="color:#F44336;">${formatCurrency(totalSpent)}</strong>.</p>
+        ${sorted[0] ? `<p>🔝 O cartão mais utilizado foi <strong>${sorted[0][0]}</strong> com ${formatCurrency(sorted[0][1].total)}.</p>` : ''}
+    `;
+}
+
+// ============================================
+// DASHBOARD DE ENTRADAS
+// ============================================
+function loadIncomeDashboard(transactions) {
+    const incomeTransactions = transactions.filter(t => t.type === 'entrada');
+    
+    const categorySummary = {};
+    incomeTransactions.forEach(t => {
+        if (!categorySummary[t.category]) {
+            categorySummary[t.category] = { total: 0, count: 0 };
+        }
+        categorySummary[t.category].total += parseFloat(t.value);
+        categorySummary[t.category].count++;
+    });
+    
+    const totalIncome = Object.values(categorySummary).reduce((s, c) => s + c.total, 0);
+    
+    document.getElementById('dashboardSummaryCards').innerHTML = `
+        <div class="summary-mini-card">
+            <div class="mini-icon" style="background: rgba(76, 175, 80, 0.1); color: #4CAF50;"><i class="fas fa-arrow-up"></i></div>
+            <div class="mini-label">Total de Entradas</div>
+            <div class="mini-value" style="color: #4CAF50;">${formatCurrency(totalIncome)}</div>
+        </div>
+        <div class="summary-mini-card">
+            <div class="mini-icon" style="background: rgba(33, 150, 243, 0.1); color: #2196F3;"><i class="fas fa-receipt"></i></div>
+            <div class="mini-label">Transações</div>
+            <div class="mini-value">${incomeTransactions.length}</div>
+        </div>
+        <div class="summary-mini-card">
+            <div class="mini-icon" style="background: rgba(156, 39, 176, 0.1); color: #9C27B0;"><i class="fas fa-trophy"></i></div>
+            <div class="mini-label">Maior Fonte</div>
+            <div class="mini-value" style="font-size: 14px;">${Object.entries(categorySummary).sort(([,a],[,b]) => b.total - a.total)[0]?.[0] || 'N/A'}</div>
+        </div>
+    `;
+    
+    const sorted = Object.entries(categorySummary).sort(([,a], [,b]) => b.total - a.total);
+    
+    const canvas = document.getElementById('mainDashboardChart');
+    if (canvas) {
+        new Chart(canvas.getContext('2d'), {
+            type: dashboardChartType,
+            data: {
+                labels: sorted.map(([name]) => name),
+                datasets: [{
+                    label: 'Entradas',
+                    data: sorted.map(([,d]) => d.total),
+                    backgroundColor: ['#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107', '#FF9800', '#FF5722'],
+                    borderWidth: 2,
+                    borderColor: '#16213e'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { color: '#b3b3b3' } } }
+            }
+        });
+    }
+    
+    document.getElementById('detailTableHead').innerHTML = `
+        <tr><th>Categoria</th><th>Total</th><th>Transações</th><th>% do Total</th></tr>
+    `;
+    
+    document.getElementById('detailTableBody').innerHTML = sorted.map(([name, d]) => `
+        <tr>
+            <td><span class="category-badge"><i class="fas fa-${getCategoryIcon(name)}"></i> ${name}</span></td>
+            <td style="color: #4CAF50; font-weight: 600;">${formatCurrency(d.total)}</td>
+            <td>${d.count}</td>
+            <td>${((d.total/totalIncome)*100).toFixed(1)}%</td>
+        </tr>
+    `).join('');
+    
+    document.getElementById('smartDashboardAnalysis').innerHTML = `
+        <p>✅ Total de entradas no período: <strong style="color:#4CAF50;">${formatCurrency(totalIncome)}</strong></p>
+        <p>📊 Foram registradas <strong>${incomeTransactions.length} transações</strong> de entrada.</p>
+        <p>💰 Média por transação: <strong>${incomeTransactions.length > 0 ? formatCurrency(totalIncome/incomeTransactions.length) : 'R$ 0,00'}</strong></p>
+    `;
+}
+
+// ============================================
+// DASHBOARD DE SAÍDAS
+// ============================================
+function loadExpenseDashboard(transactions) {
+    const expenseTransactions = transactions.filter(t => t.type === 'saida');
+    
+    const categorySummary = {};
+    expenseTransactions.forEach(t => {
+        if (!categorySummary[t.category]) {
+            categorySummary[t.category] = { total: 0, count: 0 };
+        }
+        categorySummary[t.category].total += parseFloat(t.value);
+        categorySummary[t.category].count++;
+    });
+    
+    const totalExpense = Object.values(categorySummary).reduce((s, c) => s + c.total, 0);
+    
+    document.getElementById('dashboardSummaryCards').innerHTML = `
+        <div class="summary-mini-card">
+            <div class="mini-icon" style="background: rgba(244, 67, 54, 0.1); color: #F44336;"><i class="fas fa-arrow-down"></i></div>
+            <div class="mini-label">Total de Saídas</div>
+            <div class="mini-value" style="color: #F44336;">${formatCurrency(totalExpense)}</div>
+        </div>
+        <div class="summary-mini-card">
+            <div class="mini-icon" style="background: rgba(33, 150, 243, 0.1); color: #2196F3;"><i class="fas fa-receipt"></i></div>
+            <div class="mini-label">Transações</div>
+            <div class="mini-value">${expenseTransactions.length}</div>
+        </div>
+        <div class="summary-mini-card">
+            <div class="mini-icon" style="background: rgba(255, 152, 0, 0.1); color: #FF9800;"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="mini-label">Maior Gasto</div>
+            <div class="mini-value" style="font-size: 14px;">${Object.entries(categorySummary).sort(([,a],[,b]) => b.total - a.total)[0]?.[0] || 'N/A'}</div>
+        </div>
+        <div class="summary-mini-card">
+            <div class="mini-icon" style="background: rgba(156, 39, 176, 0.1); color: #9C27B0;"><i class="fas fa-calculator"></i></div>
+            <div class="mini-label">Média por Dia</div>
+            <div class="mini-value">${formatCurrency(totalExpense / Math.max(1, getDaysInPeriod()))}</div>
+        </div>
+    `;
+    
+    const sorted = Object.entries(categorySummary).sort(([,a], [,b]) => b.total - a.total);
+    
+    const canvas = document.getElementById('mainDashboardChart');
+    if (canvas) {
+        new Chart(canvas.getContext('2d'), {
+            type: dashboardChartType,
+            data: {
+                labels: sorted.map(([name]) => name),
+                datasets: [{
+                    label: 'Saídas',
+                    data: sorted.map(([,d]) => d.total),
+                    backgroundColor: ['#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5', '#2196F3', '#00BCD4', '#009688'],
+                    borderWidth: 2,
+                    borderColor: '#16213e'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { color: '#b3b3b3' } } }
+            }
+        });
+    }
+    
+    document.getElementById('detailTableHead').innerHTML = `
+        <tr><th>Categoria</th><th>Total Gasto</th><th>Transações</th><th>% do Total</th></tr>
+    `;
+    
+    document.getElementById('detailTableBody').innerHTML = sorted.map(([name, d]) => `
+        <tr>
+            <td><span class="category-badge"><i class="fas fa-${getCategoryIcon(name)}"></i> ${name}</span></td>
+            <td style="color: #F44336; font-weight: 600;">${formatCurrency(d.total)}</td>
+            <td>${d.count}</td>
+            <td>${((d.total/totalExpense)*100).toFixed(1)}%</td>
+        </tr>
+    `).join('');
+    
+    document.getElementById('smartDashboardAnalysis').innerHTML = `
+        <p>📉 Total de saídas no período: <strong style="color:#F44336;">${formatCurrency(totalExpense)}</strong></p>
+        <p>📊 Média diária de gastos: <strong>${formatCurrency(totalExpense / Math.max(1, getDaysInPeriod()))}</strong></p>
+        <p>🔝 Maior categoria de gasto: <strong>${sorted[0]?.[0] || 'N/A'}</strong> (${sorted[0] ? ((sorted[0][1].total/totalExpense)*100).toFixed(1) : 0}%)</p>
+        <p>💡 Foram realizadas <strong>${expenseTransactions.length} transações</strong> no período.</p>
+    `;
+}
+
+// ============================================
+// DASHBOARD DE VISÃO GERAL
+// ============================================
+function loadOverviewDashboard(transactions) {
+    const income = transactions.filter(t => t.type === 'entrada').reduce((s, t) => s + parseFloat(t.value), 0);
+    const expense = transactions.filter(t => t.type === 'saida').reduce((s, t) => s + parseFloat(t.value), 0);
+    const balance = income - expense;
+    const savingsRate = income > 0 ? ((balance / income) * 100) : 0;
+    
+    // Cards de resumo
+    document.getElementById('dashboardSummaryCards').innerHTML = `
+        <div class="summary-mini-card">
+            <div class="mini-icon" style="background: rgba(76, 175, 80, 0.1); color: #4CAF50;"><i class="fas fa-arrow-up"></i></div>
+            <div class="mini-label">Total de Entradas</div>
+            <div class="mini-value" style="color: #4CAF50;">${formatCurrency(income)}</div>
+        </div>
+        <div class="summary-mini-card">
+            <div class="mini-icon" style="background: rgba(244, 67, 54, 0.1); color: #F44336;"><i class="fas fa-arrow-down"></i></div>
+            <div class="mini-label">Total de Saídas</div>
+            <div class="mini-value" style="color: #F44336;">${formatCurrency(expense)}</div>
+        </div>
+        <div class="summary-mini-card">
+            <div class="mini-icon" style="background: rgba(33, 150, 243, 0.1); color: #2196F3;"><i class="fas fa-balance-scale"></i></div>
+            <div class="mini-label">Saldo</div>
+            <div class="mini-value" style="color: ${balance >= 0 ? '#4CAF50' : '#F44336'};">${formatCurrency(balance)}</div>
+        </div>
+        <div class="summary-mini-card">
+            <div class="mini-icon" style="background: rgba(156, 39, 176, 0.1); color: #9C27B0;"><i class="fas fa-piggy-bank"></i></div>
+            <div class="mini-label">Taxa de Economia</div>
+            <div class="mini-value">${savingsRate.toFixed(1)}%</div>
+        </div>
+    `;
+    
+    // Categorias de saída
+    const catSummary = {};
+    transactions.filter(t => t.type === 'saida').forEach(t => {
+        if (!catSummary[t.category]) catSummary[t.category] = 0;
+        catSummary[t.category] += parseFloat(t.value);
+    });
+    
+    const sorted = Object.entries(catSummary).sort(([,a], [,b]) => b - a);
+    
+    // Gráfico
+    const canvas = document.getElementById('mainDashboardChart');
+    if (canvas && sorted.length > 0) {
+        new Chart(canvas.getContext('2d'), {
+            type: dashboardChartType,
+            data: {
+                labels: sorted.map(([name]) => name),
+                datasets: [{
+                    label: 'Gastos por Categoria',
+                    data: sorted.map(([,v]) => v),
+                    backgroundColor: ['#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5', '#2196F3', '#00BCD4', '#009688', '#4CAF50', '#FF9800'],
+                    borderWidth: 2,
+                    borderColor: '#16213e'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { color: '#b3b3b3' } } }
+            }
+        });
+    }
+    
+    // Tabela
+    document.getElementById('detailTableHead').innerHTML = `
+        <tr><th>Categoria</th><th>Total Gasto</th><th>% do Total</th></tr>
+    `;
+    
+    document.getElementById('detailTableBody').innerHTML = sorted.map(([name, v]) => `
+        <tr>
+            <td><span class="category-badge"><i class="fas fa-${getCategoryIcon(name)}"></i> ${name}</span></td>
+            <td style="color: #F44336; font-weight: 600;">${formatCurrency(v)}</td>
+            <td>${((v/expense)*100).toFixed(1)}%</td>
+        </tr>
+    `).join('');
+    
+    // Análise
+    document.getElementById('smartDashboardAnalysis').innerHTML = `
+        <p>📊 Período: <strong>${formatDate(dashboardDateStart)}</strong> até <strong>${formatDate(dashboardDateEnd)}</strong></p>
+        <p>✅ Entradas totais: <strong style="color:#4CAF50;">${formatCurrency(income)}</strong></p>
+        <p>📉 Saídas totais: <strong style="color:#F44336;">${formatCurrency(expense)}</strong></p>
+        <p>💰 Saldo: <strong style="color:${balance >= 0 ? '#4CAF50' : '#F44336'};">${formatCurrency(balance)}</strong></p>
+        <p>📈 Taxa de economia: <strong>${savingsRate.toFixed(1)}%</strong></p>
+        ${sorted.length > 0 ? `<p>🔝 Maior gasto: <strong>${sorted[0][0]}</strong> (${((sorted[0][1]/expense)*100).toFixed(1)}% do total)</p>` : ''}
+        <p>📅 Total de <strong>${transactions.length} transações</strong> no período.</p>
+    `;
+}
+
+// ============================================
+// DASHBOARD DE CATEGORIAS
+// ============================================
+function loadCategoriesDashboard(transactions) {
+    const catSummary = {};
+    transactions.forEach(t => {
+        if (!catSummary[t.category]) {
+            catSummary[t.category] = { entrada: 0, saida: 0, count: 0 };
+        }
+        if (t.type === 'entrada') {
+            catSummary[t.category].entrada += parseFloat(t.value);
+        } else {
+            catSummary[t.category].saida += parseFloat(t.value);
+        }
+        catSummary[t.category].count++;
+    });
+    
+    const totalEntrada = Object.values(catSummary).reduce((s, c) => s + c.entrada, 0);
+    const totalSaida = Object.values(catSummary).reduce((s, c) => s + c.saida, 0);
+    
+    document.getElementById('dashboardSummaryCards').innerHTML = `
+        <div class="summary-mini-card">
+            <div class="mini-icon" style="background: rgba(76, 175, 80, 0.1); color: #4CAF50;"><i class="fas fa-arrow-up"></i></div>
+            <div class="mini-label">Total Entradas</div>
+            <div class="mini-value" style="color: #4CAF50;">${formatCurrency(totalEntrada)}</div>
+        </div>
+        <div class="summary-mini-card">
+            <div class="mini-icon" style="background: rgba(244, 67, 54, 0.1); color: #F44336;"><i class="fas fa-arrow-down"></i></div>
+            <div class="mini-label">Total Saídas</div>
+            <div class="mini-value" style="color: #F44336;">${formatCurrency(totalSaida)}</div>
+        </div>
+        <div class="summary-mini-card">
+            <div class="mini-icon" style="background: rgba(33, 150, 243, 0.1); color: #2196F3;"><i class="fas fa-tags"></i></div>
+            <div class="mini-label">Categorias</div>
+            <div class="mini-value">${Object.keys(catSummary).length}</div>
+        </div>
+        <div class="summary-mini-card">
+            <div class="mini-icon" style="background: rgba(255, 152, 0, 0.1); color: #FF9800;"><i class="fas fa-star"></i></div>
+            <div class="mini-label">Mais usada</div>
+            <div class="mini-value" style="font-size: 14px;">${Object.entries(catSummary).sort(([,a],[,b]) => (b.entrada + b.saida) - (a.entrada + a.saida))[0]?.[0] || 'N/A'}</div>
+        </div>
+    `;
+    
+    const sorted = Object.entries(catSummary).sort(([,a], [,b]) => (b.entrada + b.saida) - (a.entrada + a.saida));
+    
+    const canvas = document.getElementById('mainDashboardChart');
+    if (canvas && sorted.length > 0) {
+        new Chart(canvas.getContext('2d'), {
+            type: dashboardChartType,
+            data: {
+                labels: sorted.map(([name]) => name),
+                datasets: [
+                    {
+                        label: 'Entradas',
+                        data: sorted.map(([,d]) => d.entrada),
+                        backgroundColor: 'rgba(76, 175, 80, 0.6)',
+                        borderColor: '#4CAF50',
+                        borderWidth: 2
+                    },
+                    {
+                        label: 'Saídas',
+                        data: sorted.map(([,d]) => d.saida),
+                        backgroundColor: 'rgba(244, 67, 54, 0.6)',
+                        borderColor: '#F44336',
+                        borderWidth: 2
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { color: '#b3b3b3' } } }
+            }
+        });
+    }
+    
+    document.getElementById('detailTableHead').innerHTML = `
+        <tr><th>Categoria</th><th>Entradas</th><th>Saídas</th><th>Saldo</th><th>Transações</th></tr>
+    `;
+    
+    document.getElementById('detailTableBody').innerHTML = sorted.map(([name, d]) => {
+        const saldo = d.entrada - d.saida;
+        return `
+            <tr>
+                <td><span class="category-badge"><i class="fas fa-${getCategoryIcon(name)}"></i> ${name}</span></td>
+                <td style="color: #4CAF50;">${d.entrada > 0 ? formatCurrency(d.entrada) : '-'}</td>
+                <td style="color: #F44336;">${d.saida > 0 ? formatCurrency(d.saida) : '-'}</td>
+                <td style="color: ${saldo >= 0 ? '#4CAF50' : '#F44336'}; font-weight: 600;">${formatCurrency(saldo)}</td>
+                <td>${d.count}</td>
+            </tr>
+        `;
+    }).join('');
+    
+    document.getElementById('smartDashboardAnalysis').innerHTML = `
+        <p>📊 Foram encontradas <strong>${Object.keys(catSummary).length} categorias</strong> com transações no período.</p>
+        <p>✅ Total de entradas: <strong style="color:#4CAF50;">${formatCurrency(totalEntrada)}</strong></p>
+        <p>📉 Total de saídas: <strong style="color:#F44336;">${formatCurrency(totalSaida)}</strong></p>
+        <p>💰 Saldo total: <strong style="color:${totalEntrada - totalSaida >= 0 ? '#4CAF50' : '#F44336'};">${formatCurrency(totalEntrada - totalSaida)}</strong></p>
+        ${sorted[0] ? `<p>🔝 Categoria mais movimentada: <strong>${sorted[0][0]}</strong> com ${formatCurrency(sorted[0][1].entrada + sorted[0][1].saida)}</p>` : ''}
+    `;
+}
+
+// ============================================
+// DASHBOARD COMPARATIVO MENSAL
+// ============================================
+function loadMonthlyDashboard(transactions) {
+    const monthlySummary = {};
+    
+    transactions.forEach(t => {
+        if (!t.date) return;
+        const month = t.date.substring(0, 7); // YYYY-MM
+        if (!monthlySummary[month]) {
+            monthlySummary[month] = { entrada: 0, saida: 0, count: 0 };
+        }
+        if (t.type === 'entrada') {
+            monthlySummary[month].entrada += parseFloat(t.value);
+        } else {
+            monthlySummary[month].saida += parseFloat(t.value);
+        }
+        monthlySummary[month].count++;
+    });
+    
+    const sorted = Object.entries(monthlySummary).sort(([a], [b]) => a.localeCompare(b));
+    
+    const totalEntrada = Object.values(monthlySummary).reduce((s, m) => s + m.entrada, 0);
+    const totalSaida = Object.values(monthlySummary).reduce((s, m) => s + m.saida, 0);
+    
+    document.getElementById('dashboardSummaryCards').innerHTML = `
+        <div class="summary-mini-card">
+            <div class="mini-icon" style="background: rgba(76, 175, 80, 0.1); color: #4CAF50;"><i class="fas fa-arrow-up"></i></div>
+            <div class="mini-label">Total Entradas</div>
+            <div class="mini-value" style="color: #4CAF50;">${formatCurrency(totalEntrada)}</div>
+        </div>
+        <div class="summary-mini-card">
+            <div class="mini-icon" style="background: rgba(244, 67, 54, 0.1); color: #F44336;"><i class="fas fa-arrow-down"></i></div>
+            <div class="mini-label">Total Saídas</div>
+            <div class="mini-value" style="color: #F44336;">${formatCurrency(totalSaida)}</div>
+        </div>
+        <div class="summary-mini-card">
+            <div class="mini-icon" style="background: rgba(33, 150, 243, 0.1); color: #2196F3;"><i class="fas fa-calendar-alt"></i></div>
+            <div class="mini-label">Meses</div>
+            <div class="mini-value">${Object.keys(monthlySummary).length}</div>
+        </div>
+        <div class="summary-mini-card">
+            <div class="mini-icon" style="background: rgba(156, 39, 176, 0.1); color: #9C27B0;"><i class="fas fa-chart-line"></i></div>
+            <div class="mini-label">Média Mensal (Saída)</div>
+            <div class="mini-value">${Object.keys(monthlySummary).length > 0 ? formatCurrency(totalSaida / Object.keys(monthlySummary).length) : 'R$ 0,00'}</div>
+        </div>
+    `;
+    
+    const canvas = document.getElementById('mainDashboardChart');
+    if (canvas && sorted.length > 0) {
+        new Chart(canvas.getContext('2d'), {
+            type: dashboardChartType === 'pie' || dashboardChartType === 'doughnut' ? 'bar' : dashboardChartType,
+            data: {
+                labels: sorted.map(([month]) => {
+                    const [y, m] = month.split('-');
+                    return new Date(y, m - 1).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+                }),
+                datasets: [
+                    {
+                        label: 'Entradas',
+                        data: sorted.map(([,d]) => d.entrada),
+                        backgroundColor: 'rgba(76, 175, 80, 0.6)',
+                        borderColor: '#4CAF50',
+                        borderWidth: 2,
+                        borderRadius: 4
+                    },
+                    {
+                        label: 'Saídas',
+                        data: sorted.map(([,d]) => d.saida),
+                        backgroundColor: 'rgba(244, 67, 54, 0.6)',
+                        borderColor: '#F44336',
+                        borderWidth: 2,
+                        borderRadius: 4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { color: '#b3b3b3' } } }
+            }
+        });
+    }
+    
+    document.getElementById('detailTableHead').innerHTML = `
+        <tr><th>Mês</th><th>Entradas</th><th>Saídas</th><th>Saldo</th><th>Economia</th></tr>
+    `;
+    
+    document.getElementById('detailTableBody').innerHTML = sorted.map(([month, d]) => {
+        const saldo = d.entrada - d.saida;
+        const economia = d.entrada > 0 ? ((saldo / d.entrada) * 100) : 0;
+        const [y, m] = month.split('-');
+        const monthName = new Date(y, m - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+        
+        return `
+            <tr>
+                <td><strong>${monthName}</strong></td>
+                <td style="color: #4CAF50;">${formatCurrency(d.entrada)}</td>
+                <td style="color: #F44336;">${formatCurrency(d.saida)}</td>
+                <td style="color: ${saldo >= 0 ? '#4CAF50' : '#F44336'}; font-weight: 600;">${formatCurrency(saldo)}</td>
+                <td>
+                    <span style="color: ${economia >= 0 ? '#4CAF50' : '#F44336'};">
+                        ${economia.toFixed(1)}%
+                    </span>
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    // Pegar melhor e pior mês
+    const bestMonth = sorted.reduce((best, curr) => {
+        const currSaldo = curr[1].entrada - curr[1].saida;
+        const bestSaldo = best ? best[1].entrada - best[1].saida : -Infinity;
+        return currSaldo > bestSaldo ? curr : best;
+    }, null);
+    
+    const worstMonth = sorted.reduce((worst, curr) => {
+        const currSaldo = curr[1].entrada - curr[1].saida;
+        const worstSaldo = worst ? worst[1].entrada - worst[1].saida : Infinity;
+        return currSaldo < worstSaldo ? curr : worst;
+    }, null);
+    
+    document.getElementById('smartDashboardAnalysis').innerHTML = `
+        <p>📊 Análise de <strong>${sorted.length} meses</strong> (${formatDate(dashboardDateStart)} até ${formatDate(dashboardDateEnd)})</p>
+        <p>📈 Média de entradas mensais: <strong style="color:#4CAF50;">${sorted.length > 0 ? formatCurrency(totalEntrada / sorted.length) : 'R$ 0,00'}</strong></p>
+        <p>📉 Média de saídas mensais: <strong style="color:#F44336;">${sorted.length > 0 ? formatCurrency(totalSaida / sorted.length) : 'R$ 0,00'}</strong></p>
+        ${bestMonth ? `<p>🏆 Melhor mês: <strong>${new Date(bestMonth[0] + '-01').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</strong> com saldo de <strong style="color:#4CAF50;">${formatCurrency(bestMonth[1].entrada - bestMonth[1].saida)}</strong></p>` : ''}
+        ${worstMonth ? `<p>⚠️ Pior mês: <strong>${new Date(worstMonth[0] + '-01').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</strong> com saldo de <strong style="color:#F44336;">${formatCurrency(worstMonth[1].entrada - worstMonth[1].saida)}</strong></p>` : ''}
+    `;
+}
+
+// Função auxiliar
+function getDaysInPeriod() {
+    const start = new Date(dashboardDateStart);
+    const end = new Date(dashboardDateEnd);
+    return Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1);
+}
+
+// ============================================
+// ESTADO DOS DEVEDORES
+// ============================================
+let debtors = JSON.parse(localStorage.getItem('debtors')) || [];
+
+// ============================================
+// GERENCIAMENTO DE DEVEDORES
+// ============================================
+
+function renderDebtors() {
+    const list = document.getElementById('debtorsList');
+    if (!list) return;
+    
+    if (debtors.length === 0) {
+        list.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-users"></i>
+                <p>Nenhum devedor cadastrado</p>
+                <button class="btn-add-small" onclick="openAddDebtorModal()">
+                    <i class="fas fa-plus"></i> Adicionar Devedor
+                </button>
+            </div>
+        `;
+        return;
+    }
+    
+    list.innerHTML = debtors.map(d => {
+        const totalOwed = calculateDebtorTotal(d.name);
+        return `
+            <div class="settings-item">
+                <div class="settings-item-info">
+                    <div class="settings-item-icon" style="background: #FF9800">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="settings-item-details">
+                        <span class="settings-item-name">${d.name}</span>
+                        <span class="settings-item-meta">
+                            <span style="color: #F44336; font-weight: 600;">${formatCurrency(totalOwed)}</span>
+                            ${d.phone ? `<span>📱 ${d.phone}</span>` : ''}
+                        </span>
+                    </div>
+                </div>
+                <div class="settings-item-actions">
+                    <button class="settings-btn-icon" onclick="editDebtor(${d.id})" title="Editar">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="settings-btn-icon btn-delete" onclick="deleteDebtor(${d.id})" title="Excluir">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    updateDebtorSelect();
+    renderDebtorsSummary();
+}
+
+function renderDebtorsSummary() {
+    const tbody = document.getElementById('debtorsSummaryBody');
+    if (!tbody) return;
+    
+    // Calcular totais por devedor
+    const summary = {};
+    
+    transactions.forEach(t => {
+        if (t.debtor && t.type === 'saida') {
+            if (!summary[t.debtor]) {
+                summary[t.debtor] = {
+                    total: 0,
+                    count: 0,
+                    lastDate: null
+                };
+            }
+            summary[t.debtor].total += parseFloat(t.value);
+            summary[t.debtor].count++;
+            
+            if (!summary[t.debtor].lastDate || t.date > summary[t.debtor].lastDate) {
+                summary[t.debtor].lastDate = t.date;
+            }
+        }
+    });
+    
+    if (Object.keys(summary).length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" style="text-align: center; padding: 40px;">
+                    <i class="fas fa-hand-holding-usd" style="font-size: 48px; color: #6C63FF; margin-bottom: 16px; display: block;"></i>
+                    <p style="color: #b3b3b3;">Nenhuma dívida registrada</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    // Ordenar por maior valor
+    const sorted = Object.entries(summary).sort(([,a], [,b]) => b.total - a.total);
+    
+    tbody.innerHTML = sorted.map(([name, data]) => {
+        const daysSinceLast = data.lastDate ? 
+            Math.floor((new Date() - new Date(data.lastDate)) / (1000 * 60 * 60 * 24)) : 
+            0;
+        
+        const status = daysSinceLast > 30 ? 'overdue' : 'pending';
+        const statusText = daysSinceLast > 30 ? 'Atrasado' : 'Pendente';
+        
+        return `
+            <tr>
+                <td>
+                    <span class="debtor-badge">
+                        <i class="fas fa-user"></i>
+                        ${name}
+                    </span>
+                </td>
+                <td style="color: #F44336; font-weight: 600;">${formatCurrency(data.total)}</td>
+                <td>${data.count} transações</td>
+                <td>${data.lastDate ? formatDate(data.lastDate) : '-'}</td>
+                <td><span class="debtor-status ${status}">${statusText}</span></td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function calculateDebtorTotal(name) {
+    return transactions
+        .filter(t => t.debtor === name && t.type === 'saida')
+        .reduce((sum, t) => sum + parseFloat(t.value), 0);
+}
+
+// Modal Devedor
+function openAddDebtorModal() {
+    document.getElementById('debtorModalTitle').textContent = 'Novo Devedor';
+    document.getElementById('debtorEditId').value = '';
+    document.getElementById('debtorForm').reset();
+    document.getElementById('debtorModal').classList.add('active');
+}
+
+function editDebtor(id) {
+    const debtor = debtors.find(d => d.id === id);
+    if (!debtor) return;
+    
+    document.getElementById('debtorModalTitle').textContent = 'Editar Devedor';
+    document.getElementById('debtorEditId').value = debtor.id;
+    document.getElementById('debtorName').value = debtor.name;
+    document.getElementById('debtorPhone').value = debtor.phone || '';
+    document.getElementById('debtorEmail').value = debtor.email || '';
+    document.getElementById('debtorNotes').value = debtor.notes || '';
+    document.getElementById('debtorModal').classList.add('active');
+}
+
+function closeDebtorModal() {
+    document.getElementById('debtorModal').classList.remove('active');
+    document.getElementById('debtorForm').reset();
+}
+
+function deleteDebtor(id) {
+    const debtor = debtors.find(d => d.id === id);
+    if (!debtor) return;
+    
+    const hasTransactions = transactions.some(t => t.debtor === debtor.name);
+    
+    if (hasTransactions) {
+        if (!confirm(`"${debtor.name}" possui transações registradas. Deseja realmente excluir?`)) {
+            return;
+        }
+    }
+    
+    if (confirm(`Excluir "${debtor.name}"?`)) {
+        debtors = debtors.filter(d => d.id !== id);
+        saveDebtors();
+        renderDebtors();
+        showNotification('Devedor excluído!', 'success');
+    }
+}
+
+// Form Devedor
+// No evento de submit do formulário de devedor
+document.addEventListener('submit', function(e) {
+    if (e.target.id === 'debtorForm') {
+        e.preventDefault();
+        
+        const editId = document.getElementById('debtorEditId').value;
+        const data = {
+            name: document.getElementById('debtorName').value.trim(),
+            phone: document.getElementById('debtorPhone').value.trim(),
+            email: document.getElementById('debtorEmail').value.trim(),
+            notes: document.getElementById('debtorNotes').value.trim()
+        };
+        
+        if (!data.name) {
+            showNotification('Nome é obrigatório!', 'error');
+            return;
+        }
+        
+        if (editId) {
+            const idx = debtors.findIndex(d => d.id === parseInt(editId));
+            if (idx !== -1) {
+                const oldName = debtors[idx].name;
+                debtors[idx] = { ...debtors[idx], ...data };
+                
+                if (oldName !== data.name) {
+                    transactions.forEach(t => {
+                        if (t.debtor === oldName) t.debtor = data.name;
+                    });
+                    saveTransactions();
+                    sendToSheets(); // Sincronizar transações também
+                }
+            }
+        } else {
+            debtors.push({ id: Date.now(), ...data });
+        }
+        
+        saveDebtors();
+        closeDebtorModal();
+        renderDebtors();
+        updateDebtorSelect();
+        
+        // ENVIAR PARA PLANILHA
+        sendDebtorsToSheets().then(success => {
+            if (success) {
+                showNotification('✅ Devedor salvo na planilha!', 'success');
+            } else {
+                showNotification('⚠️ Salvo localmente, mas erro ao enviar para planilha', 'error');
+            }
+        });
+    }
+});
+
+// Atualizar select de devedores
+function updateDebtorSelect() {
+    const select = document.getElementById('transDebtor');
+    if (!select) return;
+    
+    select.innerHTML = '<option value="">Nenhum (Compra própria)</option>' +
+        debtors.map(d => `<option value="${d.name}">${d.name}</option>`).join('');
+}
+
+// Mostrar/esconder campos relacionados ao cartão
+function toggleCardFields() {
+    const card = document.getElementById('transCard').value;
+    const installmentsGroup = document.getElementById('installmentsGroup');
+    const debtorGroup = document.getElementById('debtorGroup');
+    const installmentPreview = document.getElementById('installmentPreview');
+    
+    if (card) {
+        // Cartão selecionado
+        if (installmentsGroup) installmentsGroup.style.display = 'block';
+        if (debtorGroup) debtorGroup.style.display = 'block';
+    } else {
+        // Sem cartão
+        if (installmentsGroup) installmentsGroup.style.display = 'none';
+        if (debtorGroup) debtorGroup.style.display = 'none';
+        if (installmentPreview) installmentPreview.style.display = 'none';
+        document.getElementById('transInstallments').value = '1';
+        if (document.getElementById('transDebtor')) {
+            document.getElementById('transDebtor').value = '';
+        }
+    }
+    
+    updateInstallmentPreview();
+}
+
+// Atualizar handleTransactionSubmit para incluir devedor
+const superHandleTransactionSubmit = handleTransactionSubmit;
+handleTransactionSubmit = function(e) {
+    e.preventDefault();
+    
+    const type = document.getElementById('transType').value;
+    const valueInput = document.getElementById('transValue').value;
+    const category = document.getElementById('transCategory').value;
+    const description = document.getElementById('transDescription').value;
+    const date = document.getElementById('transDate').value;
+    const card = document.getElementById('transCard').value;
+    const installments = parseInt(document.getElementById('transInstallments')?.value) || 1;
+    const debtor = document.getElementById('transDebtor')?.value || '';
+    
+    if (!valueInput || parseFloat(valueInput) <= 0) { showNotification('Valor inválido!', 'error'); return; }
+    if (!category) { showNotification('Selecione uma categoria!', 'error'); return; }
+    if (!description.trim()) { showNotification('Insira uma descrição!', 'error'); return; }
+    if (!date) { showNotification('Selecione uma data!', 'error'); return; }
+    
+    const baseTransaction = { 
+        type, 
+        value: parseFloat(valueInput), 
+        category, 
+        description: description.trim(), 
+        date, 
+        card,
+        debtor: debtor || ''
+    };
+    
+    if (card && installments > 1) {
+        const installmentTransactions = createInstallmentTransactions(baseTransaction, installments);
+        transactions.unshift(...installmentTransactions);
+        showNotification(`${installments} parcelas criadas!`, 'success');
+    } else {
+        baseTransaction.id = Date.now();
+        transactions.unshift(baseTransaction);
+        showNotification('Transação adicionada!', 'success');
+    }
+    
+    saveTransactions();
+    closeModal();
+    updateDashboard();
+    renderTransactions();
+    updateCardSpending();
+    sendToSheets();
+    
+    if (debtor) {
+        renderDebtorsSummary();
+    }
+};
+
+// Atualizar createInstallmentTransactions para incluir devedor
+const superCreateInstallments = createInstallmentTransactions;
+createInstallmentTransactions = function(base, installments) {
+    const result = [];
+    const perInstallment = base.value / installments;
+    const [year, month, day] = base.date.split('-').map(Number);
+    const startDate = new Date(year, month - 1, day);
+    
+    for (let i = 0; i < installments; i++) {
+        const d = new Date(startDate);
+        d.setMonth(startDate.getMonth() + i);
+        const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+        d.setDate(Math.min(day, lastDay));
+        
+        result.push({
+            id: Date.now() + i,
+            type: base.type,
+            value: perInstallment,
+            category: base.category,
+            description: `${base.description} (${i + 1}/${installments})`,
+            date: d.toISOString().split('T')[0],
+            card: base.card,
+            debtor: base.debtor || ''
+        });
+    }
+    return result;
+};
+
+// Atualizar renderTransactions para mostrar devedor
+const superRenderTransactions = renderTransactions;
+renderTransactions = function() {
+    const tbody = document.getElementById('transactionsBody');
+    if (!tbody) return;
+    
+    if (transactions.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;"><p style="color:#b3b3b3;">Nenhuma transação</p></td></tr>`;
+        return;
+    }
+    
+    tbody.innerHTML = transactions.map(t => `
+        <tr>
+            <td>${formatDate(t.date)}</td>
+            <td><span class="transaction-type ${t.type}">${t.type === 'entrada' ? 'Entrada' : 'Saída'}</span></td>
+            <td><span class="category-badge"><i class="fas fa-${getCategoryIcon(t.category)}"></i> ${t.category}</span></td>
+            <td>${t.description}</td>
+            <td>${t.card ? `<span class="card-badge">💳 ${t.card}</span>` : '-'}</td>
+            <td>${t.debtor ? `<span class="debtor-badge"><i class="fas fa-user"></i> ${t.debtor}</span>` : '<span class="no-card">-</span>'}</td>
+            <td class="transaction-value ${t.type === 'entrada' ? 'positive' : 'negative'}">${t.type === 'entrada' ? '+' : '-'} ${formatCurrency(t.value)}</td>
+            <td>
+                <div class="action-buttons">
+                    <button onclick="editTransaction(${t.id})" class="btn-icon"><i class="fas fa-edit"></i></button>
+                    <button onclick="deleteTransaction(${t.id})" class="btn-icon btn-delete"><i class="fas fa-trash"></i></button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+};
+
+// Atualizar tabela de transações para incluir coluna Devedor
+// No HTML, atualize o thead da tabela de transações:
+// <th>Data</th><th>Tipo</th><th>Categoria</th><th>Descrição</th><th>Cartão</th><th>Devedor</th><th>Valor</th><th>Ações</th>
+
+// Atualizar openAddModal
+const megaOpenAddModal = openAddModal;
+openAddModal = function() {
+    document.getElementById('transactionModal').classList.add('active');
+    document.getElementById('transDate').value = new Date().toISOString().slice(0, 10);
+    
+    document.getElementById('installmentsGroup').style.display = 'none';
+    document.getElementById('installmentPreview').style.display = 'none';
+    const debtorGroup = document.getElementById('debtorGroup');
+    if (debtorGroup) debtorGroup.style.display = 'none';
+    
+    const perValue = document.getElementById('valuePerInstallment');
+    if (perValue) perValue.style.display = 'none';
+    
+    updateCardSelect();
+    updateCategorySelects();
+    updateTransactionTypeSelect();
+    updateDebtorSelect();
+    
+    const transType = document.getElementById('transType');
+    if (transType) transType.value = 'saida';
+    
+    setTimeout(() => {
+        const valueInput = document.getElementById('transValue');
+        if (valueInput) valueInput.focus();
+    }, 100);
+};
+
+// Storage
+function saveDebtors() {
+    localStorage.setItem('debtors', JSON.stringify(debtors));
+}
+
+// Inicialização
+document.addEventListener('DOMContentLoaded', function() {
+    // Carregar devedores
+    const saved = localStorage.getItem('debtors');
+    if (saved) debtors = JSON.parse(saved);
+      const now = new Date();
+    dashboardDateStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    dashboardDateEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+    // ... resto da inicialização existente ...
+});
+
+// Atualizar tabela de transações (adicionar coluna Devedor)
+// No HTML da tabela de transações, adicione <th>Devedor</th> após <th>Cartão</th>
+// E atualize o colspan para 8 nos estados vazios
 
 // Budget
 function openBudgetModal() {
@@ -1015,6 +2472,12 @@ function openAddModal() {
     updateCardSelect();
     updateCategorySelects();
     updateTransactionTypeSelect();
+    
+    // Garantir que o tipo seja "Saída" por padrão
+    const transType = document.getElementById('transType');
+    if (transType) {
+        transType.value = 'saida';
+    }
 }
 
 function closeModal() {
@@ -1072,6 +2535,60 @@ function exportData() {
     a.click();
     URL.revokeObjectURL(url);
     showNotification('Dados exportados!', 'success');
+}
+
+function generateSmartAnalysis() {
+    const selectedMonth = document.getElementById('monthFilter').value;
+    const monthTransactions = transactions.filter(t => t.date && t.date.startsWith(selectedMonth));
+    
+    const income = monthTransactions.filter(t => t.type === 'entrada').reduce((s, t) => s + parseFloat(t.value), 0);
+    const expense = monthTransactions.filter(t => t.type === 'saida').reduce((s, t) => s + parseFloat(t.value), 0);
+    const balance = income - expense;
+    
+    // Categoria que mais gastou
+    const catSpending = {};
+    monthTransactions.filter(t => t.type === 'saida').forEach(t => {
+        catSpending[t.category] = (catSpending[t.category] || 0) + parseFloat(t.value);
+    });
+    
+    const topCategory = Object.entries(catSpending).sort(([,a], [,b]) => b - a)[0];
+    
+    // Cartão mais usado
+    const cardSpending = {};
+    monthTransactions.filter(t => t.type === 'saida' && t.card).forEach(t => {
+        cardSpending[t.card] = (cardSpending[t.card] || 0) + parseFloat(t.value);
+    });
+    
+    const topCard = Object.entries(cardSpending).sort(([,a], [,b]) => b - a)[0];
+    
+    let analysis = '';
+    
+    if (balance >= 0) {
+        analysis += `✅ <strong style="color:#4CAF50;">Parabéns!</strong> Você está com saldo positivo de <strong>${formatCurrency(balance)}</strong> este mês.<br><br>`;
+        analysis += `💰 Sua taxa de economia está em <strong>${income > 0 ? ((balance/income)*100).toFixed(1) : 0}%</strong> da renda total.<br><br>`;
+    } else {
+        analysis += `⚠️ <strong style="color:#F44336;">Atenção!</strong> Seus gastos superaram a renda em <strong>${formatCurrency(Math.abs(balance))}</strong>.<br><br>`;
+        analysis += `📉 Considere reduzir gastos para equilibrar o orçamento.<br><br>`;
+    }
+    
+    if (topCategory) {
+        const pct = ((topCategory[1] / expense) * 100).toFixed(1);
+        analysis += `📊 Sua maior despesa foi com <strong>${topCategory[0]}</strong> (${pct}% dos gastos).<br><br>`;
+    }
+    
+    if (topCard) {
+        analysis += `💳 O cartão mais utilizado foi <strong>${topCard[0]}</strong> com ${formatCurrency(topCard[1])} em gastos.<br><br>`;
+    }
+    
+    // Previsão
+    const daysPassed = new Date().getDate();
+    const dailyAvg = expense / daysPassed;
+    const projectedExpense = dailyAvg * new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+    
+    analysis += `🔮 Projeção de gastos para o mês: <strong>${formatCurrency(projectedExpense)}</strong>`;
+    
+    const el = document.getElementById('smartAnalysis');
+    if (el) el.innerHTML = analysis;
 }
 
 function importData(file) {
