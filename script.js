@@ -1,7 +1,6 @@
 // Configuração - Substitua pela URL do seu Google Sheets
 const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbzCHMBLoHL468Gakq_JLQuPM65uWDIwwFTe1j7B7rLheki1kOrx227elT5HNy7a6a-6/exec';
-const SHEETS_LINK = 'https://docs.google.com/spreadsheets/d/1DdiyEwLlik9OvBA36xP9NYaTG_kTiDpQyDnXthCYqew/edit?gid=0#gid=0';
-
+const SHEETS_LINK = 'https://docs.google.com/spreadsheets/d/1DdiyEwLlik9OvBA36xP9NYaTG_kTiDpQyDnXthCYqew/edit?usp=sharing';
 // Estado da aplicação
 let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
 let cards = JSON.parse(localStorage.getItem('cards')) || [];
