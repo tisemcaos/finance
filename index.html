@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Finance DM Informática</title>
+    <title>Finance Dashboard - BI Pessoal</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -14,7 +14,7 @@
         <aside class="sidebar">
             <div class="logo">
                 <i class="fas fa-chart-pie"></i>
-                <span>DM inance</span>
+                <span>Finance BI</span>
             </div>
             <nav class="nav-menu">
                 <a href="#" class="nav-item active" data-page="dashboard">
@@ -43,19 +43,19 @@
                 </a>
             </nav>
             <div class="sidebar-footer">
-    <button class="btn-sync" onclick="fullSync()">
-        <i class="fas fa-sync"></i> Sincronizar Tudo
-    </button>
-    <button class="btn-sync" onclick="syncWithSheets()" style="background: var(--gradient-2); margin-top: 8px;">
-        <i class="fas fa-cloud-download-alt"></i> Carregar Transações
-    </button>
-    <button class="btn-sync" onclick="syncCardsFromSheets().then(() => { renderCards(); renderCardsSettings(); showNotification('Cartões atualizados!', 'success'); })" style="background: var(--gradient-3); margin-top: 8px;">
-        <i class="fas fa-credit-card"></i> Carregar Cartões
-    </button>
-    <a href="#" class="sheets-link" target="_blank" id="sheetsLink">
-        <i class="fas fa-table"></i> Abrir Planilha
-    </a>
-</div>
+                <button class="btn-sync" onclick="fullSync()">
+                    <i class="fas fa-sync"></i> Sincronizar Tudo
+                </button>
+                <button class="btn-sync" onclick="syncWithSheets()" style="background: var(--gradient-2); margin-top: 8px;">
+                    <i class="fas fa-cloud-download-alt"></i> Carregar Transações
+                </button>
+                <button class="btn-sync" onclick="syncCardsFromSheets()" style="background: var(--gradient-3); margin-top: 8px;">
+                    <i class="fas fa-credit-card"></i> Carregar Cartões
+                </button>
+                <a href="#" class="sheets-link" target="_blank" id="sheetsLink">
+                    <i class="fas fa-table"></i> Abrir Planilha
+                </a>
+            </div>
         </aside>
 
         <!-- Main Content -->
@@ -72,12 +72,9 @@
                     </div>
                 </header>
 
-                <!-- Summary Cards -->
                 <div class="summary-cards">
                     <div class="card income-card">
-                        <div class="card-icon">
-                            <i class="fas fa-arrow-up"></i>
-                        </div>
+                        <div class="card-icon"><i class="fas fa-arrow-up"></i></div>
                         <div class="card-info">
                             <h3>Entradas</h3>
                             <p class="card-value" id="totalIncome">R$ 0,00</p>
@@ -85,9 +82,7 @@
                         </div>
                     </div>
                     <div class="card expense-card">
-                        <div class="card-icon">
-                            <i class="fas fa-arrow-down"></i>
-                        </div>
+                        <div class="card-icon"><i class="fas fa-arrow-down"></i></div>
                         <div class="card-info">
                             <h3>Saídas</h3>
                             <p class="card-value" id="totalExpense">R$ 0,00</p>
@@ -95,9 +90,7 @@
                         </div>
                     </div>
                     <div class="card balance-card">
-                        <div class="card-icon">
-                            <i class="fas fa-balance-scale"></i>
-                        </div>
+                        <div class="card-icon"><i class="fas fa-balance-scale"></i></div>
                         <div class="card-info">
                             <h3>Saldo</h3>
                             <p class="card-value" id="totalBalance">R$ 0,00</p>
@@ -105,9 +98,7 @@
                         </div>
                     </div>
                     <div class="card savings-card">
-                        <div class="card-icon">
-                            <i class="fas fa-piggy-bank"></i>
-                        </div>
+                        <div class="card-icon"><i class="fas fa-piggy-bank"></i></div>
                         <div class="card-info">
                             <h3>Economia</h3>
                             <p class="card-value" id="savingsRate">0%</p>
@@ -116,7 +107,6 @@
                     </div>
                 </div>
 
-                <!-- Charts Grid -->
                 <div class="charts-grid">
                     <div class="chart-card">
                         <h3>Fluxo de Caixa Mensal</h3>
@@ -166,8 +156,7 @@
                                 <th>Ações</th>
                             </tr>
                         </thead>
-                        <tbody id="transactionsBody">
-                        </tbody>
+                        <tbody id="transactionsBody"></tbody>
                     </table>
                 </div>
             </div>
@@ -176,12 +165,11 @@
             <div class="page" id="cards-page">
                 <header class="page-header">
                     <h1>Meus Cartões</h1>
-                    <button class="btn-add" onclick="openCardModal()">
+                    <button class="btn-add" onclick="openAddCardSettingsModal()">
                         <i class="fas fa-plus"></i> Novo Cartão
                     </button>
                 </header>
-                <div class="cards-grid" id="cardsGrid">
-                </div>
+                <div class="cards-grid" id="cardsGrid"></div>
             </div>
 
             <!-- Analytics Page -->
@@ -213,22 +201,7 @@
                         <i class="fas fa-plus"></i> Novo Orçamento
                     </button>
                 </header>
-				
-				<header class="page-header">
-    <h1>Dashboard Financeiro</h1>
-    <div class="date-filter">
-        <button class="btn-add" onclick="syncWithSheets()" style="background: var(--gradient-3);">
-            <i class="fas fa-sync"></i> Atualizar Dados
-        </button>
-        <input type="month" id="monthFilter" class="month-picker">
-        <button class="btn-add" onclick="openAddModal()">
-            <i class="fas fa-plus"></i> Nova Transação
-        </button>
-    </div>
-</header>
-				
-                <div class="budget-grid" id="budgetGrid">
-                </div>
+                <div class="budget-grid" id="budgetGrid"></div>
             </div>
 
             <!-- Settings Page -->
@@ -239,60 +212,37 @@
                         <i class="fas fa-download"></i> Exportar Dados
                     </button>
                 </header>
-
                 <div class="settings-grid">
-                    <!-- Tipos de Transação -->
                     <div class="settings-card">
                         <div class="settings-header">
-                            <h3>
-                                <i class="fas fa-exchange-alt"></i>
-                                Tipos de Transação
-                            </h3>
+                            <h3><i class="fas fa-exchange-alt"></i> Tipos de Transação</h3>
                             <button class="btn-add-small" onclick="openAddTypeModal()">
                                 <i class="fas fa-plus"></i> Adicionar
                             </button>
                         </div>
-                        <div class="settings-list" id="typesList">
-                        </div>
+                        <div class="settings-list" id="typesList"></div>
                     </div>
-
-                    <!-- Categorias -->
                     <div class="settings-card">
                         <div class="settings-header">
-                            <h3>
-                                <i class="fas fa-tags"></i>
-                                Categorias
-                            </h3>
+                            <h3><i class="fas fa-tags"></i> Categorias</h3>
                             <button class="btn-add-small" onclick="openAddCategoryModal()">
                                 <i class="fas fa-plus"></i> Adicionar
                             </button>
                         </div>
-                        <div class="settings-list" id="categoriesList">
-                        </div>
+                        <div class="settings-list" id="categoriesList"></div>
                     </div>
-
-                    <!-- Cartões -->
                     <div class="settings-card">
                         <div class="settings-header">
-                            <h3>
-                                <i class="fas fa-credit-card"></i>
-                                Cartões
-                            </h3>
+                            <h3><i class="fas fa-credit-card"></i> Cartões</h3>
                             <button class="btn-add-small" onclick="openAddCardSettingsModal()">
                                 <i class="fas fa-plus"></i> Adicionar
                             </button>
                         </div>
-                        <div class="settings-list" id="cardsSettingsList">
-                        </div>
+                        <div class="settings-list" id="cardsSettingsList"></div>
                     </div>
-
-                    <!-- Configurações Gerais -->
                     <div class="settings-card">
                         <div class="settings-header">
-                            <h3>
-                                <i class="fas fa-sliders-h"></i>
-                                Configurações Gerais
-                            </h3>
+                            <h3><i class="fas fa-sliders-h"></i> Configurações Gerais</h3>
                         </div>
                         <div class="settings-form">
                             <div class="form-group">
@@ -310,17 +260,10 @@
                                     <option value="light">Claro</option>
                                 </select>
                             </div>
-                            <div class="form-group">
-                                <label>Primeiro dia da semana</label>
-                                <select id="weekStartSetting">
-                                    <option value="0">Domingo</option>
-                                    <option value="1" selected>Segunda-feira</option>
-                                </select>
-                            </div>
-                            <button class="btn-submit" onclick="importData()">
+                            <button class="btn-submit" onclick="document.getElementById('importFile').click()">
                                 <i class="fas fa-upload"></i> Importar Dados
                             </button>
-                            <input type="file" id="importFile" accept=".json" style="display: none;">
+                            <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importData(this.files[0])">
                         </div>
                     </div>
                 </div>
@@ -328,53 +271,50 @@
         </main>
     </div>
 
-   <!-- Transaction Modal ATUALIZADO -->
-<div class="modal" id="transactionModal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2>Nova Transação</h2>
-            <button class="close-modal" onclick="closeModal()">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <form id="transactionForm">
-            <div class="form-group">
-                <label>Tipo</label>
-                <select id="transType" required>
-                    <option value="entrada">Entrada</option>
-                    <option value="saida">Saída</option>
-                </select>
+    <!-- Transaction Modal -->
+    <div class="modal" id="transactionModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Nova Transação</h2>
+                <button class="close-modal" onclick="closeModal()">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-            <div class="form-group">
-                <label>Valor Total</label>
-                <input type="number" id="transValue" step="0.01" required placeholder="0,00" onchange="updateInstallmentPreview()">
-                <small style="color: #b3b3b3; font-size: 12px; display: none;" id="valuePerInstallment">
-                    Valor por parcela: <strong>R$ 0,00</strong>
-                </small>
-            </div>
-            <div class="form-group">
-                <label>Categoria</label>
-                <select id="transCategory" required>
-                    <option value="">Selecione...</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Descrição</label>
-                <input type="text" id="transDescription" required placeholder="Descrição da transação">
-            </div>
-            <div class="form-group">
-                <label>Data da Primeira Parcela</label>
-                <input type="date" id="transDate" required onchange="updateInstallmentPreview()">
-            </div>
-            <div class="form-group">
-                <label>Cartão (opcional)</label>
-                <select id="transCard" onchange="toggleInstallments()">
-                    <option value="">Nenhum (Débito/Dinheiro)</option>
-                </select>
-            </div>
-            <div class="form-group" id="installmentsGroup" style="display: none;">
-                <label>Número de Parcelas</label>
-                <div style="display: flex; gap: 10px; align-items: center;">
+            <form id="transactionForm">
+                <div class="form-group">
+                    <label>Tipo</label>
+                    <select id="transType" required>
+                        <option value="entrada">Entrada</option>
+                        <option value="saida">Saída</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Valor Total</label>
+                    <input type="number" id="transValue" step="0.01" required placeholder="0,00" onchange="updateInstallmentPreview()">
+                    <small style="color: #b3b3b3; font-size: 12px; display: none;" id="valuePerInstallment"></small>
+                </div>
+                <div class="form-group">
+                    <label>Categoria</label>
+                    <select id="transCategory" required>
+                        <option value="">Selecione...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Descrição</label>
+                    <input type="text" id="transDescription" required placeholder="Descrição da transação">
+                </div>
+                <div class="form-group">
+                    <label>Data</label>
+                    <input type="date" id="transDate" required onchange="updateInstallmentPreview()">
+                </div>
+                <div class="form-group">
+                    <label>Cartão (opcional)</label>
+                    <select id="transCard" onchange="toggleInstallments()">
+                        <option value="">Nenhum (Débito/Dinheiro)</option>
+                    </select>
+                </div>
+                <div class="form-group" id="installmentsGroup" style="display: none;">
+                    <label>Número de Parcelas</label>
                     <select id="transInstallments" onchange="updateInstallmentPreview()">
                         <option value="1">1x (À vista)</option>
                         <option value="2">2x</option>
@@ -390,21 +330,16 @@
                         <option value="12">12x</option>
                     </select>
                 </div>
-                <small style="color: #FF9800; font-size: 12px; margin-top: 4px; display: block;">
-                    ⚠️ Serão criadas parcelas automáticas nos meses seguintes
-                </small>
-            </div>
-            <div id="installmentPreview" style="display: none; margin-top: 16px; padding: 12px; background: rgba(108, 99, 255, 0.1); border-radius: 12px; border: 1px solid rgba(108, 99, 255, 0.3);">
-                <h4 style="margin-bottom: 8px; color: #6C63FF; font-size: 14px;">
-                    <i class="fas fa-calendar-alt"></i> Parcelas que serão criadas:
-                </h4>
-                <div id="installmentList" style="font-size: 13px; color: #b3b3b3; max-height: 200px; overflow-y: auto;">
+                <div id="installmentPreview" style="display: none; margin-top: 16px; padding: 12px; background: rgba(108, 99, 255, 0.1); border-radius: 12px; border: 1px solid rgba(108, 99, 255, 0.3);">
+                    <h4 style="margin-bottom: 8px; color: #6C63FF; font-size: 14px;">
+                        <i class="fas fa-calendar-alt"></i> Parcelas que serão criadas:
+                    </h4>
+                    <div id="installmentList" style="font-size: 13px; color: #b3b3b3; max-height: 200px; overflow-y: auto;"></div>
                 </div>
-            </div>
-            <button type="submit" class="btn-submit">Salvar Transação</button>
-        </form>
+                <button type="submit" class="btn-submit">Salvar Transação</button>
+            </form>
+        </div>
     </div>
-</div>
 
     <!-- Type Modal -->
     <div class="modal" id="typeModal">
@@ -419,11 +354,11 @@
                 <input type="hidden" id="typeEditId">
                 <div class="form-group">
                     <label>Nome do Tipo</label>
-                    <input type="text" id="typeName" required placeholder="Ex: Entrada, Saída, Investimento">
+                    <input type="text" id="typeName" required placeholder="Ex: Entrada, Saída">
                 </div>
                 <div class="form-group">
                     <label>Ícone (Font Awesome)</label>
-                    <input type="text" id="typeIcon" placeholder="Ex: arrow-up, arrow-down, chart-line">
+                    <input type="text" id="typeIcon" placeholder="Ex: arrow-up, arrow-down">
                 </div>
                 <div class="form-group">
                     <label>Cor</label>
@@ -454,7 +389,7 @@
                 <input type="hidden" id="categoryEditId">
                 <div class="form-group">
                     <label>Nome da Categoria</label>
-                    <input type="text" id="categoryName" required placeholder="Ex: Alimentação, Transporte">
+                    <input type="text" id="categoryName" required placeholder="Ex: Alimentação">
                 </div>
                 <div class="form-group">
                     <label>Tipo</label>
@@ -466,7 +401,7 @@
                 </div>
                 <div class="form-group">
                     <label>Ícone (Font Awesome)</label>
-                    <input type="text" id="categoryIcon" placeholder="Ex: utensils, car, home">
+                    <input type="text" id="categoryIcon" placeholder="Ex: utensils, car">
                 </div>
                 <div class="form-group">
                     <label>Cor</label>
