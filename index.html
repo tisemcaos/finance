@@ -43,13 +43,16 @@
                 </a>
             </nav>
             <div class="sidebar-footer">
-                <button class="btn-sync" onclick="syncWithSheets()">
-                    <i class="fas fa-sync"></i> Sincronizar
-                </button>
-                <a href="#" class="sheets-link" target="_blank" id="sheetsLink">
-                    <i class="fas fa-table"></i> Google Sheets
-                </a>
-            </div>
+    <button class="btn-sync" onclick="syncWithSheets()">
+        <i class="fas fa-cloud-download-alt"></i> Carregar da Planilha
+    </button>
+    <button class="btn-sync" onclick="forceUploadToSheets()" style="margin-top: 8px; background: var(--gradient-2);">
+        <i class="fas fa-cloud-upload-alt"></i> Enviar para Planilha
+    </button>
+    <a href="#" class="sheets-link" target="_blank" id="sheetsLink">
+        <i class="fas fa-table"></i> Abrir Planilha
+    </a>
+</div>
         </aside>
 
         <!-- Main Content -->
@@ -207,6 +210,20 @@
                         <i class="fas fa-plus"></i> Novo Orçamento
                     </button>
                 </header>
+				
+				<header class="page-header">
+    <h1>Dashboard Financeiro</h1>
+    <div class="date-filter">
+        <button class="btn-add" onclick="syncWithSheets()" style="background: var(--gradient-3);">
+            <i class="fas fa-sync"></i> Atualizar Dados
+        </button>
+        <input type="month" id="monthFilter" class="month-picker">
+        <button class="btn-add" onclick="openAddModal()">
+            <i class="fas fa-plus"></i> Nova Transação
+        </button>
+    </div>
+</header>
+				
                 <div class="budget-grid" id="budgetGrid">
                 </div>
             </div>
