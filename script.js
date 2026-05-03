@@ -1,5 +1,5 @@
 // Configuração - Substitua pela URL do seu Google Sheets
-const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbzCHMBLoHL468Gakq_JLQuPM65uWDIwwFTe1j7B7rLheki1kOrx227elT5HNy7a6a-6/exec';
+const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/library/d/1chkzlgzb_3rplo5LXaJgQ0Rixt7DLfctsxkOkUlhasbwygyAAsYApZdF/1';
 const SHEETS_LINK = 'https://docs.google.com/spreadsheets/d/1DdiyEwLlik9OvBA36xP9NYaTG_kTiDpQyDnXthCYqew/edit?gid=0#gid=0';
 
 // Estado da aplicação
