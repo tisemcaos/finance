@@ -26,3 +26,15 @@ Dashboard financeiro completo com integração ao Google Sheets para controle de
 1. Clone o repositório:
 ```bash
 git clone https://github.com/seu-usuario/finance-dashboard.git
+
+
+token
+
+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
+
+
+
+<script src="https://gist.github.com/tisemcaos/02b8eab755a05d8f697576608ccf78e7.js"></script>
+
+https://gist.github.com/tisemcaos/02b8eab755a05d8f697576608ccf78e7
+https://gist.github.com/tisemcaos/02b8eab755a05d8f697576608ccf78e7
