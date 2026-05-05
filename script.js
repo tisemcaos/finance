@@ -1,7 +1,7 @@
 // ============================================
 // CONFIGURAÇÃO - GITHUB GIST
 // ============================================
-const GITHUB_TOKEN = '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'; // Substitua pelo seu token
+const GITHUB_TOKEN = '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'; // Substitua pelo seu token
 const GIST_ID = '02b8eab755a05d8f697576608ccf78e7'; // Substitua pelo ID do seu Gist
 const GIST_FILENAME = 'finance-data.json';
 const GIST_API_URL = `https://api.github.com/gists/${GIST_ID}`;
