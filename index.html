@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Finance DM Informática</title>
+    <title>Finance Dashboard - BI Pessoal</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -13,99 +13,88 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="logo">
-<img src="logo.png"  class="logo-img" width="48">
-                
-<!-- <i class="fas fa-chart-pie"></i>
-  -->
-
-
-                <span>DM Finance</span>
+                <i class="fas fa-chart-pie"></i>
+                <span>Finance BI</span>
             </div>
-
-
             <nav class="nav-menu">
-    <!-- Home (Dashboard atual) -->
-    <a href="#" class="nav-item active" data-page="home">
-        <i class="fas fa-home"></i>
-        <span>Home</span>
-    </a>
-    
-    <!-- Dashboard com Submenu -->
-    <div class="nav-item-group">
-        <a href="#" class="nav-item nav-parent" data-page="dashboard" onclick="toggleSubmenu(event, 'dashboard-submenu')">
-            <i class="fas fa-chart-pie"></i>
-            <span>Dashboard</span>
-            <i class="fas fa-chevron-down submenu-arrow"></i>
-        </a>
-        <div class="submenu" id="dashboard-submenu">
-            <a href="#" class="submenu-item" data-dashboard="overview">
-                <i class="fas fa-chart-line"></i>
-                <span>Visão Geral</span>
-            </a>
-            <a href="#" class="submenu-item" data-dashboard="debtors">
-                <i class="fas fa-users"></i>
-                <span>Devedores</span>
-            </a>
-            <a href="#" class="submenu-item" data-dashboard="cards">
-                <i class="fas fa-credit-card"></i>
-                <span>Cartões</span>
-            </a>
-            <a href="#" class="submenu-item" data-dashboard="income">
-                <i class="fas fa-arrow-up"></i>
-                <span>Entradas</span>
-            </a>
-            <a href="#" class="submenu-item" data-dashboard="expense">
-                <i class="fas fa-arrow-down"></i>
-                <span>Saídas</span>
-            </a>
-            <a href="#" class="submenu-item" data-dashboard="categories">
-                <i class="fas fa-tags"></i>
-                <span>Categorias</span>
-            </a>
-            <a href="#" class="submenu-item" data-dashboard="monthly">
-                <i class="fas fa-calendar-alt"></i>
-                <span>Comparativo Mensal</span>
-            </a>
-        </div>
-    </div>
-    
-    <a href="#" class="nav-item" data-page="transactions">
-        <i class="fas fa-exchange-alt"></i>
-        <span>Transações</span>
-    </a>
-    <a href="#" class="nav-item" data-page="cards">
-        <i class="fas fa-credit-card"></i>
-        <span>Cartões</span>
-    </a>
-    <a href="#" class="nav-item" data-page="budget">
-        <i class="fas fa-wallet"></i>
-        <span>Orçamento</span>
-    </a>
-    <a href="#" class="nav-item" data-page="settings">
-        <i class="fas fa-cog"></i>
-        <span>Configurações</span>
-    </a>
-</nav>
-			
+                <!-- Home -->
+                <a href="#" class="nav-item active" data-page="home">
+                    <i class="fas fa-home"></i>
+                    <span>Home</span>
+                </a>
+                
+                <!-- Dashboard com Submenu -->
+                <div class="nav-item-group">
+                    <a href="#" class="nav-item nav-parent" data-page="dashboard" onclick="toggleSubmenu(event, 'dashboard-submenu')">
+                        <i class="fas fa-chart-pie"></i>
+                        <span>Dashboard</span>
+                        <i class="fas fa-chevron-down submenu-arrow"></i>
+                    </a>
+                    <div class="submenu" id="dashboard-submenu">
+                        <a href="#" class="submenu-item" data-dashboard="overview">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Visão Geral</span>
+                        </a>
+                        <a href="#" class="submenu-item" data-dashboard="debtors">
+                            <i class="fas fa-users"></i>
+                            <span>Devedores</span>
+                        </a>
+                        <a href="#" class="submenu-item" data-dashboard="cards">
+                            <i class="fas fa-credit-card"></i>
+                            <span>Cartões</span>
+                        </a>
+                        <a href="#" class="submenu-item" data-dashboard="income">
+                            <i class="fas fa-arrow-up"></i>
+                            <span>Entradas</span>
+                        </a>
+                        <a href="#" class="submenu-item" data-dashboard="expense">
+                            <i class="fas fa-arrow-down"></i>
+                            <span>Saídas</span>
+                        </a>
+                        <a href="#" class="submenu-item" data-dashboard="categories">
+                            <i class="fas fa-tags"></i>
+                            <span>Categorias</span>
+                        </a>
+                        <a href="#" class="submenu-item" data-dashboard="monthly">
+                            <i class="fas fa-calendar-alt"></i>
+                            <span>Comparativo Mensal</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <a href="#" class="nav-item" data-page="transactions">
+                    <i class="fas fa-exchange-alt"></i>
+                    <span>Transações</span>
+                </a>
+                <a href="#" class="nav-item" data-page="cards">
+                    <i class="fas fa-credit-card"></i>
+                    <span>Cartões</span>
+                </a>
+                <a href="#" class="nav-item" data-page="budget">
+                    <i class="fas fa-wallet"></i>
+                    <span>Orçamento</span>
+                </a>
+                <a href="#" class="nav-item" data-page="settings">
+                    <i class="fas fa-cog"></i>
+                    <span>Configurações</span>
+                </a>
+            </nav>
             <div class="sidebar-footer">
                 <button class="btn-sync" onclick="fullSync()">
-                    <i class="fas fa-sync"></i> Sincronizar Tudo
+                    <i class="fab fa-github"></i> Sincronizar
                 </button>
-                <button class="btn-sync" onclick="syncWithSheets()" style="background: var(--gradient-2); margin-top: 8px;">
-                    <i class="fas fa-cloud-download-alt"></i> Carregar Transações
+                <button class="btn-sync" onclick="forceSaveToGist()" style="background: var(--gradient-2); margin-top: 8px;">
+                    <i class="fas fa-save"></i> Salvar Agora
                 </button>
-                <button class="btn-sync" onclick="syncCardsFromSheets()" style="background: var(--gradient-3); margin-top: 8px;">
-                    <i class="fas fa-credit-card"></i> Carregar Cartões
-                </button>
-                <a href="#" class="sheets-link" target="_blank" id="sheetsLink">
-                    <i class="fas fa-table"></i> Abrir Planilha
+                <a href="#" class="sheets-link" target="_blank" id="gistLink">
+                    <i class="fab fa-github"></i> Abrir Gist
                 </a>
             </div>
         </aside>
 
         <!-- Main Content -->
         <main class="main-content">
-            <!-- Dashboard Page -->
+            <!-- Home Page -->
             <div class="page active" id="home-page">
                 <header class="page-header">
                     <h1>Dashboard Financeiro</h1>
@@ -151,34 +140,31 @@
                         </div>
                     </div>
                 </div>
-<!-- Resumo Inteligente -->
-<div class="smart-summary" style="margin-bottom: 30px;">
-    <div class="chart-card">
-        <h3><i class="fas fa-robot"></i> Análise Inteligente</h3>
-        <div id="smartAnalysis" style="padding: 16px; color: var(--text-secondary); line-height: 1.8;">
-            <!-- Análise automática -->
-        </div>
-    </div>
-</div>
 
-<!-- Progresso do Mês -->
-<div class="chart-card" style="margin-bottom: 30px;">
-    <h3><i class="fas fa-calendar-check"></i> Progresso do Mês</h3>
-    <div style="padding: 20px;">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-            <span>Dias decorridos</span>
-            <span id="daysProgress">0%</span>
-        </div>
-        <div class="progress-bar" style="height: 12px;">
-            <div class="progress-fill" id="monthProgressBar" style="width: 0%; background: var(--gradient-1);"></div>
-        </div>
-        <div style="display: flex; justify-content: space-between; margin-top: 8px; color: var(--text-secondary); font-size: 12px;">
-            <span>Dia 1</span>
-            <span id="currentDay">Dia 0</span>
-            <span id="lastDay">Dia 30</span>
-        </div>
-    </div>
-</div>
+                <!-- Progresso do Mês -->
+                <div class="chart-card" style="margin-bottom: 30px;">
+                    <h3><i class="fas fa-calendar-check"></i> Progresso do Mês</h3>
+                    <div style="padding: 20px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span>Dias decorridos</span>
+                            <span id="daysProgress">0%</span>
+                        </div>
+                        <div class="progress-bar" style="height: 12px;">
+                            <div class="progress-fill" id="monthProgressBar" style="width: 0%; background: var(--gradient-1);"></div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-top: 8px; color: var(--text-secondary); font-size: 12px;">
+                            <span>Dia 1</span>
+                            <span id="currentDay">Dia 0</span>
+                            <span id="lastDay">Dia 30</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Análise Inteligente -->
+                <div class="chart-card" style="margin-bottom: 30px;">
+                    <h3><i class="fas fa-robot"></i> Análise Inteligente</h3>
+                    <div id="smartAnalysis" style="padding: 16px; color: var(--text-secondary); line-height: 1.8;"></div>
+                </div>
 
                 <div class="charts-grid">
                     <div class="chart-card">
@@ -199,11 +185,11 @@
                     </div>
                 </div>
             </div>
-			
-			<div class="page" id="dashboard-page">
-    <!-- Container dinâmico para os dashboards -->
-    <div id="dashboardContainer"></div>
-</div>
+
+            <!-- Dashboard Page (Modular) -->
+            <div class="page" id="dashboard-page">
+                <div id="dashboardContainer"></div>
+            </div>
 
             <!-- Transactions Page -->
             <div class="page" id="transactions-page">
@@ -224,17 +210,17 @@
                 <div class="table-container">
                     <table class="transactions-table">
                         <thead>
-    <tr>
-        <th>Data</th>
-        <th>Tipo</th>
-        <th>Categoria</th>
-        <th>Descrição</th>
-        <th>Cartão</th>
-        <th>Devedor</th>
-        <th>Valor</th>
-        <th>Ações</th>
-    </tr>
-</thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Tipo</th>
+                                <th>Categoria</th>
+                                <th>Descrição</th>
+                                <th>Cartão</th>
+                                <th>Devedor</th>
+                                <th>Valor</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
                         <tbody id="transactionsBody"></tbody>
                     </table>
                 </div>
@@ -249,27 +235,6 @@
                     </button>
                 </header>
                 <div class="cards-grid" id="cardsGrid"></div>
-            </div>
-
-            <!-- Analytics Page -->
-            <div class="page" id="analytics-page">
-                <header class="page-header">
-                    <h1>Análises Avançadas</h1>
-                </header>
-                <div class="analytics-grid">
-                    <div class="chart-card full-width">
-                        <h3>Comparativo Mensal</h3>
-                        <canvas id="monthlyComparison"></canvas>
-                    </div>
-                    <div class="chart-card">
-                        <h3>Top Categorias</h3>
-                        <canvas id="topCategories"></canvas>
-                    </div>
-                    <div class="chart-card">
-                        <h3>Distribuição de Gastos</h3>
-                        <canvas id="spendingDistribution"></canvas>
-                    </div>
-                </div>
             </div>
 
             <!-- Budget Page -->
@@ -287,33 +252,9 @@
             <div class="page" id="settings-page">
                 <header class="page-header">
                     <h1>Configurações</h1>
-                    
-					<!-- Devedores -->
-
-<!-- Dashboard de Dívidas -->
-<div class="settings-card" style="grid-column: 1 / -1;">
-    <div class="settings-header">
-        <h3>
-            <i class="fas fa-hand-holding-usd"></i>
-            Resumo de Dívidas
-        </h3>
-    </div>
-    <div class="table-container" style="margin-top: 16px;">
-        <table class="transactions-table">
-            <thead>
-                <tr>
-                    <th>Devedor</th>
-                    <th>Total Devido</th>
-                    <th>Transações</th>
-                    <th>Última Transação</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody id="debtorsSummaryBody">
-            </tbody>
-        </table>
-    </div>
-</div>
+                    <button class="btn-add" onclick="exportData()">
+                        <i class="fas fa-download"></i> Exportar Dados
+                    </button>
                 </header>
                 <div class="settings-grid">
                     <div class="settings-card">
@@ -343,19 +284,34 @@
                         </div>
                         <div class="settings-list" id="cardsSettingsList"></div>
                     </div>
-					<div class="settings-card">
-    <div class="settings-header">
-        <h3>
-            <i class="fas fa-users"></i>
-            Devedores
-        </h3>
-        <button class="btn-add-small" onclick="openAddDebtorModal()">
-            <i class="fas fa-plus"></i> Adicionar
-        </button>
-    </div>
-    <div class="settings-list" id="debtorsList">
-    </div>
-</div>
+                    <div class="settings-card">
+                        <div class="settings-header">
+                            <h3><i class="fas fa-users"></i> Devedores</h3>
+                            <button class="btn-add-small" onclick="openAddDebtorModal()">
+                                <i class="fas fa-plus"></i> Adicionar
+                            </button>
+                        </div>
+                        <div class="settings-list" id="debtorsList"></div>
+                    </div>
+                    <div class="settings-card" style="grid-column: 1 / -1;">
+                        <div class="settings-header">
+                            <h3><i class="fas fa-hand-holding-usd"></i> Resumo de Dívidas</h3>
+                        </div>
+                        <div class="table-container" style="margin-top: 16px;">
+                            <table class="transactions-table">
+                                <thead>
+                                    <tr>
+                                        <th>Devedor</th>
+                                        <th>Total Devido</th>
+                                        <th>Transações</th>
+                                        <th>Última Transação</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="debtorsSummaryBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
                     <div class="settings-card">
                         <div class="settings-header">
                             <h3><i class="fas fa-sliders-h"></i> Configurações Gerais</h3>
@@ -386,11 +342,13 @@
             </div>
         </main>
     </div>
-	<!-- Botão Flutuante (FAB) -->
-<button class="fab-button" onclick="openAddModal()" title="Nova Transação (Ctrl+N)">
-    <i class="fas fa-plus"></i>
-    <span class="fab-tooltip">Nova Transação</span>
-</button>
+
+    <!-- Botão Flutuante -->
+    <button class="fab-button" onclick="openAddModal()" title="Nova Transação (Ctrl+N)">
+        <i class="fas fa-plus"></i>
+        <span class="fab-tooltip">Nova Transação</span>
+    </button>
+
     <!-- Transaction Modal -->
     <div class="modal" id="transactionModal">
         <div class="modal-content">
@@ -400,12 +358,11 @@
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-		
             <form id="transactionForm">
                 <div class="form-group">
                     <label>Tipo</label>
                     <select id="transType" required>
-                        <option value="saida">Saída</option>
+                        <option value="saida" selected>Saída</option>
                         <option value="entrada">Entrada</option>
                     </select>
                 </div>
@@ -429,11 +386,11 @@
                     <input type="date" id="transDate" required onchange="updateInstallmentPreview()">
                 </div>
                 <div class="form-group">
-    <label>Cartão (opcional)</label>
-    <select id="transCard" onchange="toggleCardFields()">
-        <option value="">Nenhum (Débito/Dinheiro)</option>
-    </select>
-</div>
+                    <label>Cartão (opcional)</label>
+                    <select id="transCard" onchange="toggleCardFields()">
+                        <option value="">Nenhum (Débito/Dinheiro)</option>
+                    </select>
+                </div>
                 <div class="form-group" id="installmentsGroup" style="display: none;">
                     <label>Número de Parcelas</label>
                     <select id="transInstallments" onchange="updateInstallmentPreview()">
@@ -451,13 +408,12 @@
                         <option value="12">12x</option>
                     </select>
                 </div>
-				<!-- Adicione dentro do form transactionForm, após o campo de Cartão -->
-<div class="form-group" id="debtorGroup" style="display: none;">
-    <label>Devedor (quem está devendo neste cartão)</label>
-    <select id="transDebtor">
-        <option value="">Nenhum (Compra própria)</option>
-    </select>
-</div>
+                <div class="form-group" id="debtorGroup" style="display: none;">
+                    <label>Devedor (quem está devendo neste cartão)</label>
+                    <select id="transDebtor">
+                        <option value="">Nenhum (Compra própria)</option>
+                    </select>
+                </div>
                 <div id="installmentPreview" style="display: none; margin-top: 16px; padding: 12px; background: rgba(108, 99, 255, 0.1); border-radius: 12px; border: 1px solid rgba(108, 99, 255, 0.3);">
                     <h4 style="margin-bottom: 8px; color: #6C63FF; font-size: 14px;">
                         <i class="fas fa-calendar-alt"></i> Parcelas que serão criadas:
@@ -480,25 +436,10 @@
             </div>
             <form id="typeForm">
                 <input type="hidden" id="typeEditId">
-                <div class="form-group">
-                    <label>Nome do Tipo</label>
-                    <input type="text" id="typeName" required placeholder="Ex: Entrada, Saída">
-                </div>
-                <div class="form-group">
-                    <label>Ícone (Font Awesome)</label>
-                    <input type="text" id="typeIcon" placeholder="Ex: arrow-up, arrow-down">
-                </div>
-                <div class="form-group">
-                    <label>Cor</label>
-                    <input type="color" id="typeColor" value="#4CAF50">
-                </div>
-                <div class="form-group">
-                    <label>Tipo de fluxo</label>
-                    <select id="typeFlow">
-                        <option value="saida">Saída (-)</option>
-                        <option value="entrada">Entrada (+)</option>
-                    </select>
-                </div>
+                <div class="form-group"><label>Nome do Tipo</label><input type="text" id="typeName" required placeholder="Ex: Entrada, Saída"></div>
+                <div class="form-group"><label>Ícone (Font Awesome)</label><input type="text" id="typeIcon" placeholder="Ex: arrow-up, arrow-down"></div>
+                <div class="form-group"><label>Cor</label><input type="color" id="typeColor" value="#4CAF50"></div>
+                <div class="form-group"><label>Tipo de fluxo</label><select id="typeFlow"><option value="entrada">Entrada (+)</option><option value="saida">Saída (-)</option></select></div>
                 <button type="submit" class="btn-submit">Salvar Tipo</button>
             </form>
         </div>
@@ -515,30 +456,11 @@
             </div>
             <form id="categoryForm">
                 <input type="hidden" id="categoryEditId">
-                <div class="form-group">
-                    <label>Nome da Categoria</label>
-                    <input type="text" id="categoryName" required placeholder="Ex: Alimentação">
-                </div>
-                <div class="form-group">
-                    <label>Tipo</label>
-                    <select id="categoryType">
-                        <option value="entrada">Entrada</option>
-                        <option value="saida">Saída</option>
-                        <option value="ambos">Ambos</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Ícone (Font Awesome)</label>
-                    <input type="text" id="categoryIcon" placeholder="Ex: utensils, car">
-                </div>
-                <div class="form-group">
-                    <label>Cor</label>
-                    <input type="color" id="categoryColor" value="#6C63FF">
-                </div>
-                <div class="form-group">
-                    <label>Orçamento Padrão Mensal (opcional)</label>
-                    <input type="number" id="categoryBudget" step="0.01" placeholder="0,00">
-                </div>
+                <div class="form-group"><label>Nome da Categoria</label><input type="text" id="categoryName" required placeholder="Ex: Alimentação"></div>
+                <div class="form-group"><label>Tipo</label><select id="categoryType"><option value="entrada">Entrada</option><option value="saida">Saída</option><option value="ambos">Ambos</option></select></div>
+                <div class="form-group"><label>Ícone (Font Awesome)</label><input type="text" id="categoryIcon" placeholder="Ex: utensils, car"></div>
+                <div class="form-group"><label>Cor</label><input type="color" id="categoryColor" value="#6C63FF"></div>
+                <div class="form-group"><label>Orçamento Padrão Mensal (opcional)</label><input type="number" id="categoryBudget" step="0.01" placeholder="0,00"></div>
                 <button type="submit" class="btn-submit">Salvar Categoria</button>
             </form>
         </div>
@@ -555,73 +477,37 @@
             </div>
             <form id="cardSettingsForm">
                 <input type="hidden" id="cardSettingsEditId">
-                <div class="form-group">
-                    <label>Nome do Cartão</label>
-                    <input type="text" id="cardSettingsName" required placeholder="Ex: Visa, MasterCard">
-                </div>
-                <div class="form-group">
-                    <label>Bandeira</label>
-                    <select id="cardSettingsBrand">
-                        <option value="Visa">Visa</option>
-                        <option value="MasterCard">MasterCard</option>
-                        <option value="American Express">American Express</option>
-                        <option value="Elo">Elo</option>
-                        <option value="Hipercard">Hipercard</option>
-                        <option value="Nubank">Nubank</option>
-                        <option value="Outro">Outro</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Limite</label>
-                    <input type="number" id="cardSettingsLimit" step="0.01" required placeholder="0,00">
-                </div>
-                <div class="form-group">
-                    <label>Dia de Fechamento</label>
-                    <input type="number" id="cardSettingsClosingDay" min="1" max="31" placeholder="Dia">
-                </div>
-                <div class="form-group">
-                    <label>Dia de Vencimento</label>
-                    <input type="number" id="cardSettingsDueDay" min="1" max="31" placeholder="Dia">
-                </div>
-                <div class="form-group">
-                    <label>Cor</label>
-                    <input type="color" id="cardSettingsColor" value="#6C63FF">
-                </div>
+                <div class="form-group"><label>Nome do Cartão</label><input type="text" id="cardSettingsName" required placeholder="Ex: Visa, MasterCard"></div>
+                <div class="form-group"><label>Bandeira</label><select id="cardSettingsBrand"><option value="Visa">Visa</option><option value="MasterCard">MasterCard</option><option value="American Express">American Express</option><option value="Elo">Elo</option><option value="Hipercard">Hipercard</option><option value="Nubank">Nubank</option><option value="Outro">Outro</option></select></div>
+                <div class="form-group"><label>Limite</label><input type="number" id="cardSettingsLimit" step="0.01" required placeholder="0,00"></div>
+                <div class="form-group"><label>Dia de Fechamento</label><input type="number" id="cardSettingsClosingDay" min="1" max="31" placeholder="Dia"></div>
+                <div class="form-group"><label>Dia de Vencimento</label><input type="number" id="cardSettingsDueDay" min="1" max="31" placeholder="Dia"></div>
+                <div class="form-group"><label>Cor</label><input type="color" id="cardSettingsColor" value="#6C63FF"></div>
                 <button type="submit" class="btn-submit">Salvar Cartão</button>
             </form>
         </div>
     </div>
-<!-- Debtor Modal -->
-<div class="modal" id="debtorModal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2 id="debtorModalTitle">Novo Devedor</h2>
-            <button class="close-modal" onclick="closeDebtorModal()">
-                <i class="fas fa-times"></i>
-            </button>
+
+    <!-- Debtor Modal -->
+    <div class="modal" id="debtorModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="debtorModalTitle">Novo Devedor</h2>
+                <button class="close-modal" onclick="closeDebtorModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="debtorForm">
+                <input type="hidden" id="debtorEditId">
+                <div class="form-group"><label>Nome *</label><input type="text" id="debtorName" required placeholder="Nome da pessoa"></div>
+                <div class="form-group"><label>Telefone</label><input type="text" id="debtorPhone" placeholder="(00) 00000-0000"></div>
+                <div class="form-group"><label>Email</label><input type="email" id="debtorEmail" placeholder="email@exemplo.com"></div>
+                <div class="form-group"><label>Observações</label><textarea id="debtorNotes" rows="3" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:1px solid var(--border-color);border-radius:12px;color:var(--text-primary);resize:vertical;" placeholder="Ex: Comprou iPhone 15 parcelado"></textarea></div>
+                <button type="submit" class="btn-submit">Salvar Devedor</button>
+            </form>
         </div>
-        <form id="debtorForm">
-            <input type="hidden" id="debtorEditId">
-            <div class="form-group">
-                <label>Nome *</label>
-                <input type="text" id="debtorName" required placeholder="Nome da pessoa">
-            </div>
-            <div class="form-group">
-                <label>Telefone</label>
-                <input type="text" id="debtorPhone" placeholder="(00) 00000-0000">
-            </div>
-            <div class="form-group">
-                <label>Email</label>
-                <input type="email" id="debtorEmail" placeholder="email@exemplo.com">
-            </div>
-            <div class="form-group">
-                <label>Observações</label>
-                <textarea id="debtorNotes" rows="3" style="width: 100%; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary); resize: vertical;" placeholder="Ex: Comprou iPhone 15 parcelado"></textarea>
-            </div>
-            <button type="submit" class="btn-submit">Salvar Devedor</button>
-        </form>
     </div>
-</div>
+
     <script src="script.js"></script>
 </body>
 </html>
