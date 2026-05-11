@@ -1,16 +1,19 @@
 // ============================================
-// CONFIGURAÇÃO VIA GOOGLE DRIVE (SEGURA)
+// CONFIGURAÇÃO - SISTEMA DE PIN
 // ============================================
-//https://drive.google.com/file/d/1FL3uBSl3ckHhbXeO0daLVUlHFWlf3B_N/view?usp=sharing
-const CONFIG_FILE_ID = '1FL3uBSl3ckHhbXeO0daLVUlHFWlf3B_N'; // ← SUBSTITUA PELO SEU ID REAL
-const CONFIG_URL = `https://drive.google.com/uc?export=download&id=${CONFIG_FILE_ID}`;
 
-// Variáveis de configuração
-let GITHUB_TOKEN = '';
-let GIST_ID = '';
-let GIST_FILENAME = 'finance-data.json';
-let GIST_API_URL = '';
-let GIST_HTML_URL = '';
+// ⚠️ DEFINA SEU PIN AQUI (4 a 6 dígitos)
+const USER_PIN = '1234'; // ← MUDE PARA SEU PIN PESSOAL
+
+// Token fixo (não precisa digitar)
+const GITHUB_TOKEN = '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'; // ← COLE SEU TOKEN AQUI
+const GIST_ID = '02b8eab755a05d8f697576608ccf78e7';
+const GIST_FILENAME = 'finance-data.json';
+const GIST_API_URL = `https://api.github.com/gists/${GIST_ID}`;
+const GIST_HTML_URL = `https://gist.github.com/tisemcaos/${GIST_ID}`;
+
+// Controle de autenticação
+let isAuthenticated = sessionStorage.getItem('authenticated') === 'true';
 
 // ============================================
 // ESTADO DA APLICAÇÃO
@@ -83,6 +86,104 @@ async function loadConfigFromDrive() {
     }
 }
 
+
+// ============================================
+// SISTEMA DE AUTENTICAÇÃO POR PIN
+// ============================================
+
+// Verificar PIN
+function verifyPin() {
+    const input = document.getElementById('pinInput');
+    const error = document.getElementById('pinError');
+    const pinValue = input.value.trim();
+    
+    if (pinValue === USER_PIN) {
+        // PIN correto!
+        isAuthenticated = true;
+        sessionStorage.setItem('authenticated', 'true');
+        
+        // Esconder modal e overlay
+        document.getElementById('pinModal').style.display = 'none';
+        document.getElementById('pinOverlay').style.display = 'none';
+        
+        // Inicializar aplicação
+        initializeAppAfterAuth();
+        
+        showNotification('✅ Bem-vindo! Dashboard carregado.', 'success');
+    } else {
+        // PIN incorreto
+        error.style.display = 'block';
+        input.value = '';
+        input.focus();
+        
+        // Vibrar/tremer o modal
+        const modal = document.querySelector('#pinModal .modal-content');
+        modal.style.animation = 'none';
+        modal.offsetHeight; // Forçar reflow
+        modal.style.animation = 'shake 0.5s ease';
+    }
+}
+
+// Inicializar após autenticação
+function initializeAppAfterAuth() {
+    initializeApp();
+    setupEventListeners();
+    updateDashboard();
+    initializeCharts();
+    applyTheme(settings.theme || 'dark');
+    updateMonthProgress();
+    
+    if (GITHUB_TOKEN && GITHUB_TOKEN !== 'ghp_SEU_TOKEN_AQUI') {
+        autoSyncAll();
+    }
+    
+    console.log('✅ Dashboard iniciado com sucesso!');
+}
+
+// Modificar inicialização
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('🚀 Carregando Finance Dashboard...');
+    
+    if (isAuthenticated) {
+        // Já autenticado (mesma sessão)
+        document.getElementById('pinModal').style.display = 'none';
+        document.getElementById('pinOverlay').style.display = 'none';
+        initializeAppAfterAuth();
+    } else {
+        // Mostrar tela de PIN
+        document.getElementById('pinModal').style.display = 'flex';
+        document.getElementById('pinOverlay').style.display = 'flex';
+        setTimeout(() => {
+            document.getElementById('pinInput').focus();
+        }, 300);
+    }
+});
+
+// Adicionar opção de "Esqueci o PIN" (reset)
+function resetPin() {
+    if (confirm('Tem certeza que deseja redefinir o PIN?\n\nO PIN padrão é: 1234')) {
+        // Aqui você pode implementar uma pergunta de segurança
+        const answer = prompt('Qual é o PIN padrão? (Dica: 1234)');
+        if (answer === '1234') {
+            USER_PIN = '1234';
+            alert('✅ PIN redefinido para 1234');
+        }
+    }
+}
+
+// Adicionar animação de shake
+const shakeStyle = document.createElement('style');
+shakeStyle.textContent = `
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        20% { transform: translateX(-10px); }
+        40% { transform: translateX(10px); }
+        60% { transform: translateX(-5px); }
+        80% { transform: translateX(5px); }
+    }
+`;
+document.head.appendChild(shakeStyle);
+
 // ============================================
 // INICIALIZAÇÃO
 // ============================================
@@ -126,6 +227,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     console.log('✅ Dashboard pronto!');
 });
+
+function logout() {
+    if (confirm('Deseja sair?\n\nSeus dados continuarão salvos no GitHub.')) {
+        sessionStorage.removeItem('authenticated');
+        location.reload();
+    }
+}
 
 function initializeApp() {
     document.getElementById('gistLink').href = GIST_HTML_URL || '#';
