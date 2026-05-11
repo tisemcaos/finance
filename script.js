@@ -6,7 +6,7 @@
 const USER_PIN = '3458'; // ← MUDE PARA SEU PIN PESSOAL
 
 // Token fixo (não precisa digitar)
-const GITHUB_TOKEN = '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'; // ← COLE SEU TOKEN AQUI
+const GITHUB_TOKEN = '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'; // ← COLE SEU TOKEN AQUI
 const GIST_ID = '02b8eab755a05d8f697576608ccf78e7';
 const GIST_FILENAME = 'finance-data.json';
 const GIST_API_URL = `https://api.github.com/gists/${GIST_ID}`;
