@@ -13,13 +13,8 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="logo">
-<img src="logo.png"  class="logo-img" width="48">
-                
-<!-- <i class="fas fa-chart-pie"></i>
-  -->
-
-
-                <span>DM Finance</span>
+                <i class="fas fa-chart-pie"></i>
+                <span>Finance BI</span>
             </div>
             <nav class="nav-menu">
                 <!-- Home -->
@@ -86,7 +81,7 @@
             </nav>
             <div class="sidebar-footer">
                 <button class="btn-sync" onclick="fullSync()">
-                    <i class="fab fa-github"></i> Sincronizar
+                    <i class="fab fa-github"></i> Sincronizar GitHub
                 </button>
                 <button class="btn-sync" onclick="forceSaveToGist()" style="background: var(--gradient-2); margin-top: 8px;">
                     <i class="fas fa-save"></i> Salvar Agora
@@ -262,6 +257,7 @@
                     </button>
                 </header>
                 <div class="settings-grid">
+                    <!-- Tipos de Transação -->
                     <div class="settings-card">
                         <div class="settings-header">
                             <h3><i class="fas fa-exchange-alt"></i> Tipos de Transação</h3>
@@ -271,6 +267,8 @@
                         </div>
                         <div class="settings-list" id="typesList"></div>
                     </div>
+
+                    <!-- Categorias -->
                     <div class="settings-card">
                         <div class="settings-header">
                             <h3><i class="fas fa-tags"></i> Categorias</h3>
@@ -280,6 +278,8 @@
                         </div>
                         <div class="settings-list" id="categoriesList"></div>
                     </div>
+
+                    <!-- Cartões -->
                     <div class="settings-card">
                         <div class="settings-header">
                             <h3><i class="fas fa-credit-card"></i> Cartões</h3>
@@ -289,6 +289,8 @@
                         </div>
                         <div class="settings-list" id="cardsSettingsList"></div>
                     </div>
+
+                    <!-- Devedores -->
                     <div class="settings-card">
                         <div class="settings-header">
                             <h3><i class="fas fa-users"></i> Devedores</h3>
@@ -298,6 +300,8 @@
                         </div>
                         <div class="settings-list" id="debtorsList"></div>
                     </div>
+
+                    <!-- Resumo de Dívidas -->
                     <div class="settings-card" style="grid-column: 1 / -1;">
                         <div class="settings-header">
                             <h3><i class="fas fa-hand-holding-usd"></i> Resumo de Dívidas</h3>
@@ -317,6 +321,8 @@
                             </table>
                         </div>
                     </div>
+
+                    <!-- Configurações Gerais -->
                     <div class="settings-card">
                         <div class="settings-header">
                             <h3><i class="fas fa-sliders-h"></i> Configurações Gerais</h3>
@@ -337,6 +343,19 @@
                                     <option value="light">Claro</option>
                                 </select>
                             </div>
+                            <div class="form-group">
+                                <label>Token do GitHub</label>
+                                <div style="display: flex; gap: 8px;">
+                                    <input type="password" id="githubTokenInput" placeholder="ghp_..." style="flex: 1;">
+                                    <button type="button" class="btn-add-small" onclick="saveGitHubToken()" style="white-space: nowrap;">
+                                        <i class="fas fa-save"></i> Salvar
+                                    </button>
+                                </div>
+                                <small style="color: #b3b3b3; font-size: 12px; display: block; margin-top: 4px;">
+                                    🔒 O token fica salvo apenas no seu navegador.
+                                    <a href="https://github.com/settings/tokens" target="_blank" style="color: #6C63FF;">Gerar novo token</a>
+                                </small>
+                            </div>
                             <button class="btn-submit" onclick="document.getElementById('importFile').click()">
                                 <i class="fas fa-upload"></i> Importar Dados
                             </button>
@@ -348,7 +367,7 @@
         </main>
     </div>
 
-    <!-- Botão Flutuante -->
+    <!-- Botão Flutuante (FAB) -->
     <button class="fab-button" onclick="openAddModal()" title="Nova Transação (Ctrl+N)">
         <i class="fas fa-plus"></i>
         <span class="fab-tooltip">Nova Transação</span>
@@ -387,7 +406,7 @@
                     <input type="text" id="transDescription" required placeholder="Descrição da transação">
                 </div>
                 <div class="form-group">
-                    <label>Data</label>
+                    <label>Data da Primeira Parcela</label>
                     <input type="date" id="transDate" required onchange="updateInstallmentPreview()">
                 </div>
                 <div class="form-group">
