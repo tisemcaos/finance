@@ -1,15 +1,47 @@
 // ============================================
-// CONFIGURAÇÃO (carregada do config.js local)
+// CONFIGURAÇÃO VIA GOOGLE DRIVE
 // ============================================
+const CONFIG_FILE_ID = '1yARl0COKkdI7dFbBUrREeeNLbLoMgsZa'; // ← SUBSTITUA pelo ID real do seu ficheiro
+const CONFIG_URL = `https://drive.google.com/uc?export=download&id=${CONFIG_FILE_ID}`;
 
-// Essas variáveis são definidas no config.js (que NÃO vai pro GitHub)
-// USER_PIN, GITHUB_TOKEN, GIST_ID
-
-const GIST_FILENAME = 'finance-data.json';
-const GIST_API_URL = `https://api.github.com/gists/${GIST_ID}`;
-const GIST_HTML_URL = `https://gist.github.com/tisemcaos/${GIST_ID}`;
-
+// Variáveis que serão preenchidas após carregar
+let USER_PIN = '1234';
+let GITHUB_TOKEN = '';
+let GIST_ID = '';
+let GIST_FILENAME = 'finance-data.json';
+let GIST_API_URL = '';
+let GIST_HTML_URL = '';
 let isAuthenticated = sessionStorage.getItem('authenticated') === 'true';
+
+// Carregar configuração do Google Drive (funciona em qualquer PC/telemóvel!)
+async function loadConfigFromDrive() {
+    try {
+        console.log('🔧 A carregar configuração...');
+        const response = await fetch(CONFIG_URL);
+        if (!response.ok) throw new Error('Falha ao carregar');
+        const config = await response.json();
+        
+        USER_PIN = config.userPin || '1234';
+        GITHUB_TOKEN = config.githubToken || '';
+        GIST_ID = config.gistId || '02b8eab755a05d8f697576608ccf78e7';
+        GIST_FILENAME = config.gistFilename || 'finance-data.json';
+        GIST_API_URL = `https://api.github.com/gists/${GIST_ID}`;
+        GIST_HTML_URL = `https://gist.github.com/${GIST_ID}`;
+        
+        console.log('✅ Configuração carregada com sucesso');
+        return true;
+    } catch (error) {
+        console.warn('⚠️ Drive indisponível, a usar localStorage...');
+        USER_PIN = localStorage.getItem('app_pin') || '1234';
+        GITHUB_TOKEN = localStorage.getItem('github_token') || '';
+        GIST_ID = localStorage.getItem('gist_id') || '02b8eab755a05d8f697576608ccf78e7';
+        GIST_API_URL = `https://api.github.com/gists/${GIST_ID}`;
+        GIST_HTML_URL = `https://gist.github.com/${GIST_ID}`;
+        return !!GITHUB_TOKEN;
+    }
+}
+
+// ... (o resto do código continua igual)
 
 // ============================================
 // ESTADO DA APLICAÇÃO
