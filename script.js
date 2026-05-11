@@ -17,7 +17,7 @@ let isAuthenticated = sessionStorage.getItem('authenticated') === 'true';
 // ✅ MANTER APENAS ESTA VERSÃO:
 async function loadConfigFromDrive() {
     try {
-        console.log('🔧 Carregando configuração do Google Drive...');
+        console.log('🔧 Tentando carregar configuração do Google Drive...');
         const response = await fetch(CONFIG_URL);
         if (!response.ok) throw new Error('Falha ao baixar config');
         const config = await response.json();
@@ -28,23 +28,29 @@ async function loadConfigFromDrive() {
             GIST_FILENAME = config.gistFilename || 'finance-data.json';
             GIST_API_URL = `https://api.github.com/gists/${GIST_ID}`;
             GIST_HTML_URL = `https://gist.github.com/${GIST_ID}`;
+            USER_PIN = config.userPin || '3458';
             localStorage.setItem('github_token', GITHUB_TOKEN);
             localStorage.setItem('gist_id', GIST_ID);
+            localStorage.setItem('app_pin', USER_PIN);
             console.log('✅ Configuração carregada do Drive');
             return true;
         }
         throw new Error('Configuração incompleta');
     } catch (error) {
-        console.warn('⚠️ Drive indisponível, usando localStorage...');
+        // Fallback silencioso para localStorage
+        console.log('ℹ️ Usando configuração local (Drive indisponível)');
         GITHUB_TOKEN = localStorage.getItem('github_token') || '';
         GIST_ID = localStorage.getItem('gist_id') || '02b8eab755a05d8f697576608ccf78e7';
+        USER_PIN = localStorage.getItem('app_pin') || '3458';
         GIST_FILENAME = 'finance-data.json';
         GIST_API_URL = `https://api.github.com/gists/${GIST_ID}`;
         GIST_HTML_URL = `https://gist.github.com/${GIST_ID}`;
+        
         if (GITHUB_TOKEN) {
-            console.log('✅ Usando token do localStorage');
+            console.log('✅ Token encontrado no armazenamento local');
             return true;
         }
+        console.log('ℹ️ Nenhum token configurado ainda');
         return false;
     }
 }
@@ -1622,26 +1628,9 @@ async function loadFromGist() {
 }
 
 async function fullSync() {
-    if (!GITHUB_TOKEN) { 
-        showNotification('❌ Configure o token do GitHub primeiro!\nVá em Configurações > Token do GitHub', 'error');
-        
-        // Perguntar se quer configurar agora
-        setTimeout(() => {
-            const token = prompt(
-                '🔐 Token do GitHub necessário!\n\n' +
-                '1. Acesse: https://github.com/settings/tokens\n' +
-                '2. Generate new token (classic)\n' +
-                '3. Marque permissão "gist"\n' +
-                '4. Cole o token abaixo:\n\n' +
-                'Token (ghp_...):'
-            );
-            if (token && token.startsWith('ghp_')) {
-                GITHUB_TOKEN = token;
-                localStorage.setItem('github_token', token);
-                location.reload();
-            }
-        }, 500);
-        return; 
+    if (!GITHUB_TOKEN || GITHUB_TOKEN === '') {
+        showNotification('⚠️ Token não configurado. Configure nas Configurações.', 'error');
+        return;
     }
     
     const btns = document.querySelectorAll('.btn-sync');
