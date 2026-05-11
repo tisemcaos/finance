@@ -5,7 +5,7 @@ const CONFIG_FILE_ID = '1yARl0COKkdI7dFbBUrREeeNLbLoMgsZa'; // ← SUBSTITUA pel
 const CONFIG_URL = `https://drive.google.com/uc?export=download&id=${CONFIG_FILE_ID}`;
 
 // Variáveis que serão preenchidas após carregar
-let USER_PIN = '1234';
+let USER_PIN = '3458';
 let GITHUB_TOKEN = '';
 let GIST_ID = '';
 let GIST_FILENAME = 'finance-data.json';
