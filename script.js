@@ -1,18 +1,14 @@
 // ============================================
-// CONFIGURAÇÃO - SISTEMA DE PIN
+// CONFIGURAÇÃO (carregada do config.js local)
 // ============================================
 
-// ⚠️ DEFINA SEU PIN AQUI (4 a 6 dígitos)
-const USER_PIN = '3458'; // ← MUDE PARA SEU PIN PESSOAL
+// Essas variáveis são definidas no config.js (que NÃO vai pro GitHub)
+// USER_PIN, GITHUB_TOKEN, GIST_ID
 
-// Token fixo (não precisa digitar)
-const GITHUB_TOKEN = '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'; // ← COLE SEU TOKEN AQUI
-const GIST_ID = '02b8eab755a05d8f697576608ccf78e7';
 const GIST_FILENAME = 'finance-data.json';
 const GIST_API_URL = `https://api.github.com/gists/${GIST_ID}`;
 const GIST_HTML_URL = `https://gist.github.com/tisemcaos/${GIST_ID}`;
 
-// Controle de autenticação
 let isAuthenticated = sessionStorage.getItem('authenticated') === 'true';
 
 // ============================================
