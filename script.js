@@ -1,11 +1,16 @@
 // ============================================
-// CONFIGURAÇÃO - GITHUB GIST
+// CONFIGURAÇÃO VIA GOOGLE DRIVE (SEGURA)
 // ============================================
-const GITHUB_TOKEN = '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'; // Substitua pelo seu token
-const GIST_ID = '02b8eab755a05d8f697576608ccf78e7'; // Substitua pelo ID do seu Gist
-const GIST_FILENAME = 'finance-data.json';
-const GIST_API_URL = `https://api.github.com/gists/${GIST_ID}`;
-const GIST_HTML_URL = `https://gist.github.com/${GIST_ID}`;
+//https://drive.google.com/file/d/1FL3uBSl3ckHhbXeO0daLVUlHFWlf3B_N/view?usp=sharing
+const CONFIG_FILE_ID = '1FL3uBSl3ckHhbXeO0daLVUlHFWlf3B_N'; // ← SUBSTITUA PELO SEU ID REAL
+const CONFIG_URL = `https://drive.google.com/uc?export=download&id=${CONFIG_FILE_ID}`;
+
+// Variáveis de configuração
+let GITHUB_TOKEN = '';
+let GIST_ID = '';
+let GIST_FILENAME = 'finance-data.json';
+let GIST_API_URL = '';
+let GIST_HTML_URL = '';
 
 // ============================================
 // ESTADO DA APLICAÇÃO
@@ -36,60 +41,146 @@ let settings = JSON.parse(localStorage.getItem('financeSettings')) || {
     theme: 'dark'
 };
 
-// Variáveis do Dashboard Modular
 let currentDashboard = 'overview';
 let dashboardChartType = 'bar';
 let dashboardDateStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
 let dashboardDateEnd = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0];
 
 // ============================================
+// CARREGAR CONFIGURAÇÃO
+// ============================================
+async function loadConfigFromDrive() {
+    try {
+        console.log('🔧 Carregando configuração do Google Drive...');
+        const response = await fetch(CONFIG_URL);
+        if (!response.ok) throw new Error('Falha ao baixar config');
+        const config = await response.json();
+        
+        if (config.githubToken && config.gistId) {
+            GITHUB_TOKEN = config.githubToken;
+            GIST_ID = config.gistId;
+            GIST_FILENAME = config.gistFilename || 'finance-data.json';
+            GIST_API_URL = `https://api.github.com/gists/${GIST_ID}`;
+            GIST_HTML_URL = `https://gist.github.com/${GIST_ID}`;
+            localStorage.setItem('github_token', GITHUB_TOKEN);
+            localStorage.setItem('gist_id', GIST_ID);
+            console.log('✅ Configuração carregada do Drive');
+            return true;
+        }
+        throw new Error('Configuração incompleta');
+    } catch (error) {
+        console.warn('⚠️ Drive indisponível, usando localStorage...');
+        GITHUB_TOKEN = localStorage.getItem('github_token') || '';
+        GIST_ID = localStorage.getItem('gist_id') || '02b8eab755a05d8f697576608ccf78e7';
+        GIST_FILENAME = 'finance-data.json';
+        GIST_API_URL = `https://api.github.com/gists/${GIST_ID}`;
+        GIST_HTML_URL = `https://gist.github.com/${GIST_ID}`;
+        if (GITHUB_TOKEN) {
+            console.log('✅ Usando token do localStorage');
+            return true;
+        }
+        return false;
+    }
+}
+
+// ============================================
 // INICIALIZAÇÃO
 // ============================================
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('🚀 Iniciando Finance Dashboard...');
+    
+    // Carregar config
+    const configOk = await loadConfigFromDrive();
+    if (!configOk || !GITHUB_TOKEN) {
+        setTimeout(() => {
+            const token = prompt(
+                '🔐 Token do GitHub não encontrado.\n\n' +
+                '1. Acesse: https://github.com/settings/tokens\n' +
+                '2. Clique em "Generate new token (classic)"\n' +
+                '3. Marque a permissão "gist"\n' +
+                '4. Cole o token abaixo:\n\n' +
+                'Token (ghp_...):'
+            );
+            if (token && token.startsWith('ghp_')) {
+                GITHUB_TOKEN = token;
+                GIST_ID = '02b8eab755a05d8f697576608ccf78e7';
+                GIST_API_URL = `https://api.github.com/gists/${GIST_ID}`;
+                GIST_HTML_URL = `https://gist.github.com/${GIST_ID}`;
+                localStorage.setItem('github_token', token);
+                localStorage.setItem('gist_id', GIST_ID);
+                location.reload();
+            }
+        }, 1000);
+    }
+    
     initializeApp();
     setupEventListeners();
     updateDashboard();
     initializeCharts();
     applyTheme(settings.theme || 'dark');
     updateMonthProgress();
-    autoSyncAll();
     
-    console.log('🚀 Finance Dashboard iniciado!');
-    console.log('💾 Dados salvos no GitHub Gist');
-    console.log('💡 Ctrl+N = Nova Transação | Ctrl+S = Sincronizar');
+    if (GITHUB_TOKEN) {
+        autoSyncAll();
+    }
+    
+    console.log('✅ Dashboard pronto!');
 });
 
 function initializeApp() {
-    document.getElementById('gistLink').href = GIST_HTML_URL;
+    document.getElementById('gistLink').href = GIST_HTML_URL || '#';
     document.getElementById('monthFilter').value = new Date().toISOString().slice(0, 7);
     updateCardSelect();
     updateTransactionTypeSelect();
     updateCategorySelects();
     updateDebtorSelect();
+    
+    // Preencher campo de token se existir
+    const tokenInput = document.getElementById('githubTokenInput');
+    if (tokenInput && GITHUB_TOKEN) {
+        tokenInput.placeholder = 'Token configurado ✅';
+    }
 }
 
 function setupEventListeners() {
+    // Navegação
     document.querySelectorAll('.nav-item:not(.nav-parent)').forEach(item => {
         item.addEventListener('click', (e) => {
             e.preventDefault();
-            navigateTo(item.dataset.page);
+            const page = item.dataset.page;
+            if (page) navigateTo(page);
         });
     });
     
-    document.getElementById('monthFilter').addEventListener('change', () => {
-        updateDashboard();
-        updateMonthProgress();
-    });
-    document.getElementById('transactionForm').addEventListener('submit', handleTransactionSubmit);
-    document.getElementById('typeForm').addEventListener('submit', handleTypeSubmit);
-    document.getElementById('categoryForm').addEventListener('submit', handleCategorySubmit);
-    document.getElementById('cardSettingsForm').addEventListener('submit', handleCardSettingsSubmit);
+    // Filtro de mês
+    const monthFilter = document.getElementById('monthFilter');
+    if (monthFilter) {
+        monthFilter.addEventListener('change', () => {
+            updateDashboard();
+            updateMonthProgress();
+        });
+    }
     
+    // Forms
+    const transactionForm = document.getElementById('transactionForm');
+    if (transactionForm) transactionForm.addEventListener('submit', handleTransactionSubmit);
+    
+    const typeForm = document.getElementById('typeForm');
+    if (typeForm) typeForm.addEventListener('submit', handleTypeSubmit);
+    
+    const categoryForm = document.getElementById('categoryForm');
+    if (categoryForm) categoryForm.addEventListener('submit', handleCategorySubmit);
+    
+    const cardSettingsForm = document.getElementById('cardSettingsForm');
+    if (cardSettingsForm) cardSettingsForm.addEventListener('submit', handleCardSettingsSubmit);
+    
+    // Busca e filtros
     const searchInput = document.querySelector('.search-input');
     const filterSelect = document.querySelector('.filter-select');
     if (searchInput) searchInput.addEventListener('input', filterTransactions);
     if (filterSelect) filterSelect.addEventListener('change', filterTransactions);
     
+    // Teclas de atalho
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') closeAllModals();
         if (e.ctrlKey && e.key === 'n') { e.preventDefault(); openAddModal(); }
@@ -98,225 +189,36 @@ function setupEventListeners() {
 }
 
 // ============================================
-// SINCRONIZAÇÃO COM GITHUB GIST
+// SALVAR TOKEN DO GITHUB
 // ============================================
-async function saveToGist() {
-    try {
-        const data = {
-            transactions: transactions,
-            cards: cards,
-            budgets: budgets,
-            debtors: debtors,
-            settings: settings,
-            lastSync: new Date().toISOString()
-        };
-        
-        const content = JSON.stringify(data, null, 2);
-        
-        const response = await fetch(GIST_API_URL, {
-            method: 'PATCH',
-            headers: {
-                'Authorization': `token ${GITHUB_TOKEN}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/vnd.github.v3+json'
-            },
-            body: JSON.stringify({
-                files: {
-                    [GIST_FILENAME]: { content: content }
-                }
-            })
-        });
-        
-        if (response.ok) {
-            console.log('✅ Dados salvos no Gist');
-            return true;
-        } else {
-            console.error('❌ Erro ao salvar:', await response.text());
-            return false;
-        }
-    } catch (error) {
-        console.error('❌ Erro ao salvar no Gist:', error);
-        return false;
-    }
-}
-
-async function loadFromGist() {
-    try {
-        const response = await fetch(GIST_API_URL, {
-            headers: {
-                'Authorization': `token ${GITHUB_TOKEN}`,
-                'Accept': 'application/vnd.github.v3+json'
-            }
-        });
-        
-        if (response.ok) {
-            const gist = await response.json();
-            const file = gist.files[GIST_FILENAME];
-            
-            if (file && file.content && file.content.trim() !== '{}') {
-                const data = JSON.parse(file.content);
-                
-                if (data.transactions && Array.isArray(data.transactions)) {
-                    transactions = data.transactions;
-                    saveTransactions();
-                }
-                if (data.cards && Array.isArray(data.cards)) {
-                    cards = data.cards;
-                    saveCards();
-                }
-                if (data.budgets && Array.isArray(data.budgets)) {
-                    budgets = data.budgets;
-                    saveBudgets();
-                }
-                if (data.debtors && Array.isArray(data.debtors)) {
-                    debtors = data.debtors;
-                    saveDebtors();
-                }
-                if (data.settings) {
-                    settings = data.settings;
-                    saveSettings();
-                }
-                
-                console.log('✅ Dados carregados do Gist');
-                console.log('📊 Transações:', transactions.length);
-                console.log('💳 Cartões:', cards.length);
-                console.log('👥 Devedores:', debtors.length);
-                console.log('🕒 Última sinc:', data.lastSync);
-                
-                return true;
-            }
-        }
-        return false;
-    } catch (error) {
-        console.error('❌ Erro ao carregar do Gist:', error);
-        return false;
-    }
-}
-
-async function fullSync() {
-    const btns = document.querySelectorAll('.btn-sync');
-    btns.forEach(b => { b.disabled = true; b.style.opacity = '0.7'; });
+function saveGitHubToken() {
+    const input = document.getElementById('githubTokenInput');
+    if (!input) return;
     
-    try {
-        showNotification('📥 Baixando dados do GitHub...', 'success');
-        const loaded = await loadFromGist();
-        
-        if (loaded) {
-            updateDashboard();
-            renderTransactions();
-            renderCards();
-            renderDebtors();
-            renderDebtorsSummary();
-            updateCardSelect();
-            updateDebtorSelect();
-            updateCategorySelects();
-            updateTransactionTypeSelect();
-            updateCardSpending();
-            applyTheme(settings.theme || 'dark');
-            updateMonthProgress();
-            
-            showNotification('✅ Dados sincronizados do GitHub!', 'success');
-        } else {
-            showNotification('📤 Enviando dados para o GitHub...', 'success');
-            const saved = await saveToGist();
-            if (saved) {
-                showNotification('✅ Dados enviados para o GitHub!', 'success');
-            } else {
-                showNotification('❌ Erro ao sincronizar com GitHub', 'error');
-            }
-        }
-        console.log('✨ Sincronização concluída');
-    } catch (error) {
-        console.error('❌ Erro:', error);
-        showNotification('❌ Erro na sincronização', 'error');
-    } finally {
-        btns.forEach(b => { b.disabled = false; b.style.opacity = '1'; });
+    const token = input.value.trim();
+    if (token && token.startsWith('ghp_')) {
+        GITHUB_TOKEN = token;
+        localStorage.setItem('github_token', token);
+        GIST_API_URL = `https://api.github.com/gists/${GIST_ID}`;
+        GIST_HTML_URL = `https://gist.github.com/${GIST_ID}`;
+        input.value = '';
+        input.placeholder = 'Token configurado ✅';
+        showNotification('✅ Token salvo com sucesso!', 'success');
+    } else if (token) {
+        showNotification('⚠️ Token inválido. Deve começar com "ghp_".', 'error');
     }
 }
-
-async function forceSaveToGist() {
-    const saved = await saveToGist();
-    if (saved) {
-        showNotification('✅ Dados salvos no GitHub com sucesso!', 'success');
-    } else {
-        showNotification('❌ Erro ao salvar no GitHub. Verifique o token.', 'error');
-    }
-}
-
-async function autoSyncAll() {
-    try {
-        console.log('🔄 Tentando carregar dados do GitHub...');
-        const loaded = await loadFromGist();
-        if (loaded) {
-            updateDashboard();
-            renderTransactions();
-            renderCards();
-            renderDebtors();
-            renderDebtorsSummary();
-            updateCardSelect();
-            updateDebtorSelect();
-            updateCategorySelects();
-            updateTransactionTypeSelect();
-            updateCardSpending();
-            applyTheme(settings.theme || 'dark');
-            updateMonthProgress();
-            console.log('✅ Dados carregados do Gist');
-        } else {
-            console.log('ℹ️ Nenhum dado no Gist, usando dados locais');
-        }
-    } catch (error) {
-        console.log('ℹ️ Usando dados locais');
-    }
-}
-
-// Auto-save com debounce
-let _saveTimeout;
-function autoSaveToGist() {
-    clearTimeout(_saveTimeout);
-    _saveTimeout = setTimeout(async () => {
-        await saveToGist();
-        console.log('💾 Auto-save realizado');
-    }, 2000);
-}
-
-// Sobrescrever funções de salvamento
-const _saveTransactions = saveTransactions;
-saveTransactions = function() {
-    _saveTransactions();
-    autoSaveToGist();
-};
-
-const _saveCards = saveCards;
-saveCards = function() {
-    _saveCards();
-    autoSaveToGist();
-};
-
-const _saveDebtors = saveDebtors;
-saveDebtors = function() {
-    _saveDebtors();
-    autoSaveToGist();
-};
-
-const _saveBudgets = saveBudgets;
-saveBudgets = function() {
-    _saveBudgets();
-    autoSaveToGist();
-};
-
-const _saveSettings = saveSettings;
-saveSettings = function() {
-    _saveSettings();
-    autoSaveToGist();
-};
 
 // ============================================
 // NAVEGAÇÃO
 // ============================================
 function navigateTo(page) {
+    console.log('Navegando para:', page);
+    
     document.querySelectorAll('.nav-item:not(.nav-parent)').forEach(item => {
         item.classList.toggle('active', item.dataset.page === page);
     });
+    
     document.querySelectorAll('.page').forEach(p => {
         p.classList.toggle('active', p.id === `${page}-page`);
     });
@@ -346,8 +248,10 @@ function navigateTo(page) {
                 renderCardsSettings();
                 renderDebtors();
                 renderDebtorsSummary();
-                document.getElementById('currencySetting').value = settings.currency || 'BRL';
-                document.getElementById('themeSetting').value = settings.theme || 'dark';
+                const currencySetting = document.getElementById('currencySetting');
+                const themeSetting = document.getElementById('themeSetting');
+                if (currencySetting) currencySetting.value = settings.currency || 'BRL';
+                if (themeSetting) themeSetting.value = settings.theme || 'dark';
                 break;
         }
     }, 100);
@@ -357,10 +261,13 @@ function toggleSubmenu(event, submenuId) {
     event.preventDefault();
     const parent = event.currentTarget;
     const submenu = document.getElementById(submenuId);
-    parent.classList.toggle('active');
-    submenu.classList.toggle('active');
+    if (parent && submenu) {
+        parent.classList.toggle('active');
+        submenu.classList.toggle('active');
+    }
 }
 
+// Listener para submenu items
 document.addEventListener('click', function(e) {
     const submenuItem = e.target.closest('.submenu-item');
     if (submenuItem) {
@@ -368,8 +275,11 @@ document.addEventListener('click', function(e) {
         document.querySelectorAll('.submenu-item').forEach(item => item.classList.remove('active'));
         submenuItem.classList.add('active');
         navigateTo('dashboard');
-        currentDashboard = submenuItem.dataset.dashboard;
-        loadDashboard(currentDashboard);
+        const dashboardType = submenuItem.dataset.dashboard;
+        if (dashboardType) {
+            currentDashboard = dashboardType;
+            loadDashboard(dashboardType);
+        }
     }
 });
 
@@ -377,22 +287,33 @@ document.addEventListener('click', function(e) {
 // DASHBOARD PRINCIPAL (HOME)
 // ============================================
 function updateDashboard() {
-    const selectedMonth = document.getElementById('monthFilter').value;
+    const monthFilter = document.getElementById('monthFilter');
+    if (!monthFilter) return;
+    
+    const selectedMonth = monthFilter.value;
     const monthTransactions = transactions.filter(t => t.date && t.date.startsWith(selectedMonth));
     
-    const income = monthTransactions.filter(t => t.type === 'entrada').reduce((sum, t) => sum + parseFloat(t.value), 0);
-    const expense = monthTransactions.filter(t => t.type === 'saida').reduce((sum, t) => sum + parseFloat(t.value), 0);
+    const income = monthTransactions.filter(t => t.type === 'entrada').reduce((sum, t) => sum + parseFloat(t.value || 0), 0);
+    const expense = monthTransactions.filter(t => t.type === 'saida').reduce((sum, t) => sum + parseFloat(t.value || 0), 0);
     const balance = income - expense;
     const savingsRate = income > 0 ? ((balance / income) * 100) : 0;
     
-    generateSmartAnalysis();
+    generateSmartAnalysis(monthTransactions, income, expense, balance);
     
-    document.getElementById('totalIncome').textContent = formatCurrency(income);
-    document.getElementById('totalExpense').textContent = formatCurrency(expense);
-    document.getElementById('totalBalance').textContent = formatCurrency(balance);
-    document.getElementById('savingsRate').textContent = `${savingsRate.toFixed(1)}%`;
-    document.getElementById('balanceTrend').textContent = balance >= 0 ? 'Saldo positivo' : 'Saldo negativo';
-    document.getElementById('balanceTrend').className = `card-trend ${balance >= 0 ? 'positive' : 'negative'}`;
+    const totalIncome = document.getElementById('totalIncome');
+    const totalExpense = document.getElementById('totalExpense');
+    const totalBalance = document.getElementById('totalBalance');
+    const savingsRateEl = document.getElementById('savingsRate');
+    const balanceTrend = document.getElementById('balanceTrend');
+    
+    if (totalIncome) totalIncome.textContent = formatCurrency(income);
+    if (totalExpense) totalExpense.textContent = formatCurrency(expense);
+    if (totalBalance) totalBalance.textContent = formatCurrency(balance);
+    if (savingsRateEl) savingsRateEl.textContent = `${savingsRate.toFixed(1)}%`;
+    if (balanceTrend) {
+        balanceTrend.textContent = balance >= 0 ? 'Saldo positivo' : 'Saldo negativo';
+        balanceTrend.className = `card-trend ${balance >= 0 ? 'positive' : 'negative'}`;
+    }
     
     updateCharts(monthTransactions);
 }
@@ -415,16 +336,20 @@ function updateMonthProgress() {
 }
 
 function updateCharts(monthTransactions) {
-    const selectedMonth = document.getElementById('monthFilter').value;
+    const monthFilter = document.getElementById('monthFilter');
+    if (!monthFilter) return;
+    
+    const selectedMonth = monthFilter.value;
     const [year, month] = selectedMonth.split('-').map(Number);
     const daysInMonth = new Date(year, month, 0).getDate();
     
+    // Cashflow
     const dailyData = Array.from({length: daysInMonth}, (_, i) => {
         const dayStr = `${selectedMonth}-${String(i + 1).padStart(2, '0')}`;
         const dayTransactions = monthTransactions.filter(t => t.date === dayStr);
         return {
-            income: dayTransactions.filter(t => t.type === 'entrada').reduce((sum, t) => sum + parseFloat(t.value), 0),
-            expense: dayTransactions.filter(t => t.type === 'saida').reduce((sum, t) => sum + parseFloat(t.value), 0)
+            income: dayTransactions.filter(t => t.type === 'entrada').reduce((sum, t) => sum + parseFloat(t.value || 0), 0),
+            expense: dayTransactions.filter(t => t.type === 'saida').reduce((sum, t) => sum + parseFloat(t.value || 0), 0)
         };
     });
     
@@ -436,9 +361,10 @@ function updateCharts(monthTransactions) {
         ]
     });
     
+    // Categories
     const categories = {};
     monthTransactions.filter(t => t.type === 'saida').forEach(t => {
-        categories[t.category] = (categories[t.category] || 0) + parseFloat(t.value);
+        categories[t.category] = (categories[t.category] || 0) + parseFloat(t.value || 0);
     });
     
     if (Object.keys(categories).length > 0) {
@@ -448,9 +374,10 @@ function updateCharts(monthTransactions) {
         }, 'doughnut');
     }
     
+    // Cards
     const cardSpending = {};
     monthTransactions.filter(t => t.type === 'saida' && t.card).forEach(t => {
-        cardSpending[t.card] = (cardSpending[t.card] || 0) + parseFloat(t.value);
+        cardSpending[t.card] = (cardSpending[t.card] || 0) + parseFloat(t.value || 0);
     });
     
     if (Object.keys(cardSpending).length > 0) {
@@ -461,52 +388,34 @@ function updateCharts(monthTransactions) {
     }
 }
 
-function generateSmartAnalysis() {
-    const selectedMonth = document.getElementById('monthFilter').value;
-    const monthTransactions = transactions.filter(t => t.date && t.date.startsWith(selectedMonth));
-    
-    const income = monthTransactions.filter(t => t.type === 'entrada').reduce((s, t) => s + parseFloat(t.value), 0);
-    const expense = monthTransactions.filter(t => t.type === 'saida').reduce((s, t) => s + parseFloat(t.value), 0);
-    const balance = income - expense;
-    
-    const catSpending = {};
-    monthTransactions.filter(t => t.type === 'saida').forEach(t => {
-        catSpending[t.category] = (catSpending[t.category] || 0) + parseFloat(t.value);
-    });
-    
-    const topCategory = Object.entries(catSpending).sort(([,a], [,b]) => b - a)[0];
-    
-    const cardSpending = {};
-    monthTransactions.filter(t => t.type === 'saida' && t.card).forEach(t => {
-        cardSpending[t.card] = (cardSpending[t.card] || 0) + parseFloat(t.value);
-    });
-    
-    const topCard = Object.entries(cardSpending).sort(([,a], [,b]) => b - a)[0];
+function generateSmartAnalysis(monthTransactions, income, expense, balance) {
+    const el = document.getElementById('smartAnalysis');
+    if (!el) return;
     
     let analysis = '';
     
     if (balance >= 0) {
-        analysis += `✅ <strong style="color:#4CAF50;">Parabéns!</strong> Você está com saldo positivo de <strong>${formatCurrency(balance)}</strong> este mês.<br><br>`;
-        analysis += `💰 Sua taxa de economia está em <strong>${income > 0 ? ((balance/income)*100).toFixed(1) : 0}%</strong> da renda total.<br><br>`;
+        analysis += `✅ <strong style="color:#4CAF50;">Parabéns!</strong> Saldo positivo de <strong>${formatCurrency(balance)}</strong>.<br><br>`;
+        analysis += `💰 Economia de <strong>${income > 0 ? ((balance/income)*100).toFixed(1) : 0}%</strong> da renda.<br><br>`;
     } else {
-        analysis += `⚠️ <strong style="color:#F44336;">Atenção!</strong> Seus gastos superaram a renda em <strong>${formatCurrency(Math.abs(balance))}</strong>.<br><br>`;
+        analysis += `⚠️ <strong style="color:#F44336;">Atenção!</strong> Gastos superaram a renda em <strong>${formatCurrency(Math.abs(balance))}</strong>.<br><br>`;
     }
     
+    const catSpending = {};
+    monthTransactions.filter(t => t.type === 'saida').forEach(t => {
+        catSpending[t.category] = (catSpending[t.category] || 0) + parseFloat(t.value || 0);
+    });
+    const topCategory = Object.entries(catSpending).sort(([,a], [,b]) => b - a)[0];
     if (topCategory) {
-        analysis += `📊 Sua maior despesa foi com <strong>${topCategory[0]}</strong> (${((topCategory[1]/expense)*100).toFixed(1)}% dos gastos).<br><br>`;
-    }
-    
-    if (topCard) {
-        analysis += `💳 O cartão mais utilizado foi <strong>${topCard[0]}</strong> com ${formatCurrency(topCard[1])} em gastos.<br><br>`;
+        analysis += `📊 Maior despesa: <strong>${topCategory[0]}</strong> (${((topCategory[1]/expense)*100).toFixed(1)}%).<br><br>`;
     }
     
     const daysPassed = new Date().getDate();
     const dailyAvg = expense / Math.max(1, daysPassed);
     const projectedExpense = dailyAvg * new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
-    analysis += `🔮 Projeção de gastos para o mês: <strong>${formatCurrency(projectedExpense)}</strong>`;
+    analysis += `🔮 Projeção de gastos: <strong>${formatCurrency(projectedExpense)}</strong>`;
     
-    const el = document.getElementById('smartAnalysis');
-    if (el) el.innerHTML = analysis;
+    el.innerHTML = analysis;
 }
 
 // ============================================
@@ -553,18 +462,18 @@ function getChartOptions() {
 function handleTransactionSubmit(e) {
     e.preventDefault();
     
-    const type = document.getElementById('transType').value;
-    const valueInput = document.getElementById('transValue').value;
-    const category = document.getElementById('transCategory').value;
-    const description = document.getElementById('transDescription').value;
-    const date = document.getElementById('transDate').value;
-    const card = document.getElementById('transCard').value;
+    const type = document.getElementById('transType')?.value || 'saida';
+    const valueInput = document.getElementById('transValue')?.value;
+    const category = document.getElementById('transCategory')?.value;
+    const description = document.getElementById('transDescription')?.value;
+    const date = document.getElementById('transDate')?.value;
+    const card = document.getElementById('transCard')?.value || '';
     const installments = parseInt(document.getElementById('transInstallments')?.value) || 1;
     const debtor = document.getElementById('transDebtor')?.value || '';
     
     if (!valueInput || parseFloat(valueInput) <= 0) { showNotification('Valor inválido!', 'error'); return; }
     if (!category) { showNotification('Selecione uma categoria!', 'error'); return; }
-    if (!description.trim()) { showNotification('Insira uma descrição!', 'error'); return; }
+    if (!description?.trim()) { showNotification('Insira uma descrição!', 'error'); return; }
     if (!date) { showNotification('Selecione uma data!', 'error'); return; }
     
     const baseTransaction = { type, value: parseFloat(valueInput), category, description: description.trim(), date, card, debtor };
@@ -629,13 +538,11 @@ function renderTransactions() {
             <td><span class="category-badge"><i class="fas fa-${getCategoryIcon(t.category)}"></i> ${t.category}</span></td>
             <td>${t.description}</td>
             <td>${t.card ? `<span class="card-badge">💳 ${t.card}</span>` : '-'}</td>
-            <td>${t.debtor ? `<span class="debtor-badge"><i class="fas fa-user"></i> ${t.debtor}</span>` : '<span class="no-card">-</span>'}</td>
+            <td>${t.debtor ? `<span class="debtor-badge"><i class="fas fa-user"></i> ${t.debtor}</span>` : '-'}</td>
             <td class="transaction-value ${t.type === 'entrada' ? 'positive' : 'negative'}">${t.type === 'entrada' ? '+' : '-'} ${formatCurrency(t.value)}</td>
             <td>
-                <div class="action-buttons">
-                    <button onclick="editTransaction(${t.id})" class="btn-icon"><i class="fas fa-edit"></i></button>
-                    <button onclick="deleteTransaction(${t.id})" class="btn-icon btn-delete"><i class="fas fa-trash"></i></button>
-                </div>
+                <button onclick="editTransaction(${t.id})" class="btn-icon"><i class="fas fa-edit"></i></button>
+                <button onclick="deleteTransaction(${t.id})" class="btn-icon btn-delete"><i class="fas fa-trash"></i></button>
             </td>
         </tr>
     `).join('');
@@ -676,10 +583,11 @@ function filterTransactions() {
     let filtered = transactions;
     if (filter === 'entradas') filtered = filtered.filter(t => t.type === 'entrada');
     if (filter === 'saídas') filtered = filtered.filter(t => t.type === 'saida');
-    if (search) filtered = filtered.filter(t => t.description.toLowerCase().includes(search) || t.category.toLowerCase().includes(search) || (t.debtor && t.debtor.toLowerCase().includes(search)));
+    if (search) filtered = filtered.filter(t => t.description?.toLowerCase().includes(search) || t.category?.toLowerCase().includes(search) || t.debtor?.toLowerCase().includes(search));
     filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
     
     const tbody = document.getElementById('transactionsBody');
+    if (!tbody) return;
     if (filtered.length === 0) {
         tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;"><p style="color:#b3b3b3;">Nenhum resultado</p></td></tr>`;
         return;
@@ -754,9 +662,9 @@ function updateCardSelect() {
 
 function updateCardSpending() {
     cards.forEach(card => {
-        card.spent = transactions.filter(t => t.type === 'saida' && t.card === card.name).reduce((sum, t) => sum + parseFloat(t.value), 0);
+        card.spent = transactions.filter(t => t.type === 'saida' && t.card === card.name).reduce((sum, t) => sum + parseFloat(t.value || 0), 0);
     });
-    saveCards();
+    saveCardsLocal();
 }
 
 // ============================================
@@ -1087,14 +995,14 @@ function renderDebtorsSummary() {
     transactions.forEach(t => {
         if (t.debtor && t.type === 'saida') {
             if (!summary[t.debtor]) summary[t.debtor] = { total: 0, count: 0, lastDate: null };
-            summary[t.debtor].total += parseFloat(t.value);
+            summary[t.debtor].total += parseFloat(t.value || 0);
             summary[t.debtor].count++;
             if (!summary[t.debtor].lastDate || t.date > summary[t.debtor].lastDate) summary[t.debtor].lastDate = t.date;
         }
     });
     
     if (Object.keys(summary).length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:40px;"><i class="fas fa-hand-holding-usd" style="font-size:48px;color:#6C63FF;margin-bottom:16px;display:block;"></i><p style="color:#b3b3b3;">Nenhuma dívida registrada</p></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:40px;"><p style="color:#b3b3b3;">Nenhuma dívida registrada</p></td></tr>`;
         return;
     }
     
@@ -1118,7 +1026,7 @@ function renderDebtorsSummary() {
 }
 
 function calculateDebtorTotal(name) {
-    return transactions.filter(t => t.debtor === name && t.type === 'saida').reduce((sum, t) => sum + parseFloat(t.value), 0);
+    return transactions.filter(t => t.debtor === name && t.type === 'saida').reduce((sum, t) => sum + parseFloat(t.value || 0), 0);
 }
 
 function openAddDebtorModal() {
@@ -1140,17 +1048,10 @@ function editDebtor(id) {
     document.getElementById('debtorModal').classList.add('active');
 }
 
-function closeDebtorModal() {
-    document.getElementById('debtorModal').classList.remove('active');
-    document.getElementById('debtorForm').reset();
-}
+function closeDebtorModal() { document.getElementById('debtorModal').classList.remove('active'); }
 
 function deleteDebtor(id) {
-    const debtor = debtors.find(d => d.id === id);
-    if (!debtor) return;
-    const hasTransactions = transactions.some(t => t.debtor === debtor.name);
-    if (hasTransactions && !confirm(`"${debtor.name}" possui transações. Deseja realmente excluir?`)) return;
-    if (confirm(`Excluir "${debtor.name}"?`)) {
+    if (confirm('Excluir devedor?')) {
         debtors = debtors.filter(d => d.id !== id);
         saveDebtors();
         renderDebtors();
@@ -1158,6 +1059,7 @@ function deleteDebtor(id) {
     }
 }
 
+// Listener para o form de devedor
 document.addEventListener('submit', function(e) {
     if (e.target.id === 'debtorForm') {
         e.preventDefault();
@@ -1197,10 +1099,10 @@ function updateDebtorSelect() {
 }
 
 // ============================================
-// CAMPOS DO CARTÃO (Parcelas + Devedor)
+// CAMPOS DO CARTÃO
 // ============================================
 function toggleCardFields() {
-    const card = document.getElementById('transCard').value;
+    const card = document.getElementById('transCard')?.value;
     const installmentsGroup = document.getElementById('installmentsGroup');
     const debtorGroup = document.getElementById('debtorGroup');
     const installmentPreview = document.getElementById('installmentPreview');
@@ -1212,17 +1114,19 @@ function toggleCardFields() {
         if (installmentsGroup) installmentsGroup.style.display = 'none';
         if (debtorGroup) debtorGroup.style.display = 'none';
         if (installmentPreview) installmentPreview.style.display = 'none';
-        document.getElementById('transInstallments').value = '1';
-        if (document.getElementById('transDebtor')) document.getElementById('transDebtor').value = '';
+        const instSelect = document.getElementById('transInstallments');
+        if (instSelect) instSelect.value = '1';
+        const debtorSelect = document.getElementById('transDebtor');
+        if (debtorSelect) debtorSelect.value = '';
     }
     updateInstallmentPreview();
 }
 
 function updateInstallmentPreview() {
-    const card = document.getElementById('transCard').value;
+    const card = document.getElementById('transCard')?.value;
     const installments = parseInt(document.getElementById('transInstallments')?.value) || 1;
-    const value = parseFloat(document.getElementById('transValue').value) || 0;
-    const date = document.getElementById('transDate').value;
+    const value = parseFloat(document.getElementById('transValue')?.value) || 0;
+    const date = document.getElementById('transDate')?.value;
     const preview = document.getElementById('installmentPreview');
     const list = document.getElementById('installmentList');
     const perValue = document.getElementById('valuePerInstallment');
@@ -1295,7 +1199,7 @@ function loadDashboard(type) {
             </div>
             <div id="dashboardSummaryCards" class="dashboard-summary-cards"></div>
             <div class="dashboard-grid">
-                <div class="chart-card full-width"><h3 id="mainChartTitle">Gráfico Principal</h3><canvas id="mainDashboardChart"></canvas></div>
+                <div class="chart-card full-width"><h3>Gráfico Principal</h3><canvas id="mainDashboardChart"></canvas></div>
             </div>
             <div class="chart-card full-width" style="margin-top:20px;"><h3>Detalhamento</h3><div class="table-container" style="max-height:400px;overflow-y:auto;"><table class="detail-table"><thead id="detailTableHead"></thead><tbody id="detailTableBody"></tbody></table></div></div>
             <div class="chart-card full-width" style="margin-top:20px;"><h3><i class="fas fa-robot"></i> Análise Inteligente</h3><div id="smartDashboardAnalysis" style="padding:16px;color:var(--text-secondary);line-height:1.8;"></div></div>
@@ -1316,98 +1220,88 @@ function loadDashboard(type) {
 }
 
 function updateDashboardDates() {
-    dashboardDateStart = document.getElementById('dashboardDateStart').value;
-    dashboardDateEnd = document.getElementById('dashboardDateEnd').value;
+    dashboardDateStart = document.getElementById('dashboardDateStart')?.value || dashboardDateStart;
+    dashboardDateEnd = document.getElementById('dashboardDateEnd')?.value || dashboardDateEnd;
     loadDashboard(currentDashboard);
 }
 
 function changeChartType(type) {
     dashboardChartType = type;
-    document.querySelectorAll('.chart-type-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.innerHTML.includes(type === 'bar' ? 'bar' : type === 'pie' ? 'pie' : type === 'line' ? 'line' : 'circle'));
-    });
     loadDashboard(currentDashboard);
 }
 
-// ============================================
-// DASHBOARDS ESPECÍFICOS
-// ============================================
+// Dashboards específicos (visão geral, devedores, cartões, etc.)
 function loadOverviewDashboard(transactions) {
-    const income = transactions.filter(t => t.type === 'entrada').reduce((s, t) => s + parseFloat(t.value), 0);
-    const expense = transactions.filter(t => t.type === 'saida').reduce((s, t) => s + parseFloat(t.value), 0);
+    const income = transactions.filter(t => t.type === 'entrada').reduce((s, t) => s + parseFloat(t.value || 0), 0);
+    const expense = transactions.filter(t => t.type === 'saida').reduce((s, t) => s + parseFloat(t.value || 0), 0);
     const balance = income - expense;
     const savingsRate = income > 0 ? ((balance / income) * 100) : 0;
     
-    document.getElementById('dashboardSummaryCards').innerHTML = `
-        <div class="summary-mini-card"><div class="mini-icon" style="background:rgba(76,175,80,0.1);color:#4CAF50;"><i class="fas fa-arrow-up"></i></div><div class="mini-label">Entradas</div><div class="mini-value" style="color:#4CAF50;">${formatCurrency(income)}</div></div>
-        <div class="summary-mini-card"><div class="mini-icon" style="background:rgba(244,67,54,0.1);color:#F44336;"><i class="fas fa-arrow-down"></i></div><div class="mini-label">Saídas</div><div class="mini-value" style="color:#F44336;">${formatCurrency(expense)}</div></div>
-        <div class="summary-mini-card"><div class="mini-icon" style="background:rgba(33,150,243,0.1);color:#2196F3;"><i class="fas fa-balance-scale"></i></div><div class="mini-label">Saldo</div><div class="mini-value" style="color:${balance>=0?'#4CAF50':'#F44336'};">${formatCurrency(balance)}</div></div>
-        <div class="summary-mini-card"><div class="mini-icon" style="background:rgba(156,39,176,0.1);color:#9C27B0;"><i class="fas fa-piggy-bank"></i></div><div class="mini-label">Economia</div><div class="mini-value">${savingsRate.toFixed(1)}%</div></div>
-    `;
+    const summaryCards = document.getElementById('dashboardSummaryCards');
+    if (summaryCards) {
+        summaryCards.innerHTML = `
+            <div class="summary-mini-card"><div class="mini-icon" style="background:rgba(76,175,80,0.1);color:#4CAF50;"><i class="fas fa-arrow-up"></i></div><div class="mini-label">Entradas</div><div class="mini-value" style="color:#4CAF50;">${formatCurrency(income)}</div></div>
+            <div class="summary-mini-card"><div class="mini-icon" style="background:rgba(244,67,54,0.1);color:#F44336;"><i class="fas fa-arrow-down"></i></div><div class="mini-label">Saídas</div><div class="mini-value" style="color:#F44336;">${formatCurrency(expense)}</div></div>
+            <div class="summary-mini-card"><div class="mini-icon" style="background:rgba(33,150,243,0.1);color:#2196F3;"><i class="fas fa-balance-scale"></i></div><div class="mini-label">Saldo</div><div class="mini-value" style="color:${balance>=0?'#4CAF50':'#F44336'};">${formatCurrency(balance)}</div></div>
+        `;
+    }
     
     const catSummary = {};
-    transactions.filter(t => t.type === 'saida').forEach(t => { catSummary[t.category] = (catSummary[t.category] || 0) + parseFloat(t.value); });
+    transactions.filter(t => t.type === 'saida').forEach(t => { catSummary[t.category] = (catSummary[t.category] || 0) + parseFloat(t.value || 0); });
     const sorted = Object.entries(catSummary).sort(([,a], [,b]) => b - a);
     
     const canvas = document.getElementById('mainDashboardChart');
     if (canvas && sorted.length > 0) {
         new Chart(canvas.getContext('2d'), {
             type: dashboardChartType,
-            data: { labels: sorted.map(([n]) => n), datasets: [{ label: 'Gastos', data: sorted.map(([,v]) => v), backgroundColor: ['#F44336','#E91E63','#9C27B0','#673AB7','#3F51B5','#2196F3','#00BCD4','#009688'], borderWidth: 2, borderColor: '#16213e' }] },
+            data: { labels: sorted.map(([n]) => n), datasets: [{ label: 'Gastos', data: sorted.map(([,v]) => v), backgroundColor: ['#F44336','#E91E63','#9C27B0','#673AB7','#3F51B5','#2196F3'], borderWidth: 2, borderColor: '#16213e' }] },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#b3b3b3' } } } }
         });
     }
     
-    document.getElementById('detailTableHead').innerHTML = `<tr><th>Categoria</th><th>Total</th><th>%</th></tr>`;
-    document.getElementById('detailTableBody').innerHTML = sorted.map(([n, v]) => `<tr><td><span class="category-badge"><i class="fas fa-${getCategoryIcon(n)}"></i> ${n}</span></td><td style="color:#F44336;font-weight:600;">${formatCurrency(v)}</td><td>${((v/expense)*100).toFixed(1)}%</td></tr>`).join('');
+    const detailHead = document.getElementById('detailTableHead');
+    const detailBody = document.getElementById('detailTableBody');
+    if (detailHead) detailHead.innerHTML = `<tr><th>Categoria</th><th>Total</th><th>%</th></tr>`;
+    if (detailBody) detailBody.innerHTML = sorted.map(([n, v]) => `<tr><td>${n}</td><td style="color:#F44336;">${formatCurrency(v)}</td><td>${((v/expense)*100).toFixed(1)}%</td></tr>`).join('');
     
-    document.getElementById('smartDashboardAnalysis').innerHTML = `
-        <p>📊 Período: <strong>${formatDate(dashboardDateStart)}</strong> até <strong>${formatDate(dashboardDateEnd)}</strong></p>
-        <p>✅ Entradas: <strong style="color:#4CAF50;">${formatCurrency(income)}</strong> | 📉 Saídas: <strong style="color:#F44336;">${formatCurrency(expense)}</strong></p>
-        <p>💰 Saldo: <strong style="color:${balance>=0?'#4CAF50':'#F44336'};">${formatCurrency(balance)}</strong> | 📈 Economia: <strong>${savingsRate.toFixed(1)}%</strong></p>
-    `;
+    const analysis = document.getElementById('smartDashboardAnalysis');
+    if (analysis) analysis.innerHTML = `<p>📊 Período analisado. Entradas: <strong style="color:#4CAF50;">${formatCurrency(income)}</strong> | Saídas: <strong style="color:#F44336;">${formatCurrency(expense)}</strong></p>`;
 }
 
 function loadDebtorsDashboard(transactions) {
     const debtorTransactions = transactions.filter(t => t.debtor && t.type === 'saida');
     const debtorSummary = {};
     debtorTransactions.forEach(t => {
-        if (!debtorSummary[t.debtor]) debtorSummary[t.debtor] = { total: 0, count: 0, lastDate: null };
-        debtorSummary[t.debtor].total += parseFloat(t.value);
+        if (!debtorSummary[t.debtor]) debtorSummary[t.debtor] = { total: 0, count: 0 };
+        debtorSummary[t.debtor].total += parseFloat(t.value || 0);
         debtorSummary[t.debtor].count++;
-        if (!debtorSummary[t.debtor].lastDate || t.date > debtorSummary[t.debtor].lastDate) debtorSummary[t.debtor].lastDate = t.date;
     });
     
     const totalOwed = Object.values(debtorSummary).reduce((s, d) => s + d.total, 0);
     const uniqueDebtors = Object.keys(debtorSummary).length;
-    const avgPerDebtor = uniqueDebtors > 0 ? totalOwed / uniqueDebtors : 0;
     
-    document.getElementById('dashboardSummaryCards').innerHTML = `
-        <div class="summary-mini-card"><div class="mini-icon" style="background:rgba(244,67,54,0.1);color:#F44336;"><i class="fas fa-hand-holding-usd"></i></div><div class="mini-label">Total Devido</div><div class="mini-value" style="color:#F44336;">${formatCurrency(totalOwed)}</div></div>
-        <div class="summary-mini-card"><div class="mini-icon" style="background:rgba(255,152,0,0.1);color:#FF9800;"><i class="fas fa-users"></i></div><div class="mini-label">Devedores</div><div class="mini-value">${uniqueDebtors}</div></div>
-        <div class="summary-mini-card"><div class="mini-icon" style="background:rgba(33,150,243,0.1);color:#2196F3;"><i class="fas fa-calculator"></i></div><div class="mini-label">Média</div><div class="mini-value">${formatCurrency(avgPerDebtor)}</div></div>
-        <div class="summary-mini-card"><div class="mini-icon" style="background:rgba(76,175,80,0.1);color:#4CAF50;"><i class="fas fa-receipt"></i></div><div class="mini-label">Transações</div><div class="mini-value">${debtorTransactions.length}</div></div>
-    `;
+    const summaryCards = document.getElementById('dashboardSummaryCards');
+    if (summaryCards) {
+        summaryCards.innerHTML = `
+            <div class="summary-mini-card"><div class="mini-icon" style="background:rgba(244,67,54,0.1);color:#F44336;"><i class="fas fa-hand-holding-usd"></i></div><div class="mini-label">Total Devido</div><div class="mini-value" style="color:#F44336;">${formatCurrency(totalOwed)}</div></div>
+            <div class="summary-mini-card"><div class="mini-icon" style="background:rgba(255,152,0,0.1);color:#FF9800;"><i class="fas fa-users"></i></div><div class="mini-label">Devedores</div><div class="mini-value">${uniqueDebtors}</div></div>
+        `;
+    }
     
     const sorted = Object.entries(debtorSummary).sort(([,a], [,b]) => b.total - a.total);
     const canvas = document.getElementById('mainDashboardChart');
     if (canvas && sorted.length > 0) {
         new Chart(canvas.getContext('2d'), {
             type: dashboardChartType,
-            data: { labels: sorted.map(([n]) => n), datasets: [{ label: 'Valor Devido', data: sorted.map(([,d]) => d.total), backgroundColor: ['#F44336','#FF9800','#FFEB3B','#4CAF50','#2196F3','#9C27B0'], borderWidth: 2, borderColor: '#16213e' }] },
+            data: { labels: sorted.map(([n]) => n), datasets: [{ label: 'Valor Devido', data: sorted.map(([,d]) => d.total), backgroundColor: ['#F44336','#FF9800','#FFEB3B'], borderWidth: 2, borderColor: '#16213e' }] },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#b3b3b3' } } } }
         });
     }
     
-    document.getElementById('detailTableHead').innerHTML = `<tr><th>Devedor</th><th>Total</th><th>Qtd</th><th>Última</th><th>%</th></tr>`;
-    document.getElementById('detailTableBody').innerHTML = sorted.map(([n, d]) => `
-        <tr><td><span class="debtor-badge"><i class="fas fa-user"></i> ${n}</span></td><td style="color:#F44336;font-weight:600;">${formatCurrency(d.total)}</td><td>${d.count}</td><td>${d.lastDate?formatDate(d.lastDate):'-'}</td><td>${totalOwed>0?((d.total/totalOwed)*100).toFixed(1):0}%</td></tr>
-    `).join('');
-    
-    document.getElementById('smartDashboardAnalysis').innerHTML = `
-        <p>📊 <strong>${uniqueDebtors} pessoa(s)</strong> devem <strong style="color:#F44336;">${formatCurrency(totalOwed)}</strong>.</p>
-        <p>🔝 Maior devedor: <strong>${sorted[0]?.[0]||'N/A'}</strong> (${sorted[0]?formatCurrency(sorted[0][1].total):'R\$ 0,00'})</p>
-    `;
+    const detailHead = document.getElementById('detailTableHead');
+    const detailBody = document.getElementById('detailTableBody');
+    if (detailHead) detailHead.innerHTML = `<tr><th>Devedor</th><th>Total</th><th>Qtd</th></tr>`;
+    if (detailBody) detailBody.innerHTML = sorted.map(([n, d]) => `<tr><td>${n}</td><td style="color:#F44336;">${formatCurrency(d.total)}</td><td>${d.count}</td></tr>`).join('');
 }
 
 function loadCardsDashboard(transactions) {
@@ -1415,17 +1309,18 @@ function loadCardsDashboard(transactions) {
     const cardSummary = {};
     cardTransactions.forEach(t => {
         if (!cardSummary[t.card]) cardSummary[t.card] = { total: 0, count: 0 };
-        cardSummary[t.card].total += parseFloat(t.value);
+        cardSummary[t.card].total += parseFloat(t.value || 0);
         cardSummary[t.card].count++;
     });
     
     const totalSpent = Object.values(cardSummary).reduce((s, c) => s + c.total, 0);
     
-    document.getElementById('dashboardSummaryCards').innerHTML = `
-        <div class="summary-mini-card"><div class="mini-icon" style="background:rgba(244,67,54,0.1);color:#F44336;"><i class="fas fa-credit-card"></i></div><div class="mini-label">Total Gasto</div><div class="mini-value" style="color:#F44336;">${formatCurrency(totalSpent)}</div></div>
-        <div class="summary-mini-card"><div class="mini-icon" style="background:rgba(33,150,243,0.1);color:#2196F3;"><i class="fas fa-shopping-cart"></i></div><div class="mini-label">Transações</div><div class="mini-value">${cardTransactions.length}</div></div>
-        <div class="summary-mini-card"><div class="mini-icon" style="background:rgba(76,175,80,0.1);color:#4CAF50;"><i class="fas fa-percent"></i></div><div class="mini-label">Mais usado</div><div class="mini-value" style="font-size:14px;">${Object.entries(cardSummary).sort(([,a],[,b])=>b.total-a.total)[0]?.[0]||'N/A'}</div></div>
-    `;
+    const summaryCards = document.getElementById('dashboardSummaryCards');
+    if (summaryCards) {
+        summaryCards.innerHTML = `
+            <div class="summary-mini-card"><div class="mini-icon" style="background:rgba(244,67,54,0.1);color:#F44336;"><i class="fas fa-credit-card"></i></div><div class="mini-label">Total Gasto</div><div class="mini-value" style="color:#F44336;">${formatCurrency(totalSpent)}</div></div>
+        `;
+    }
     
     const sorted = Object.entries(cardSummary).sort(([,a], [,b]) => b.total - a.total);
     const canvas = document.getElementById('mainDashboardChart');
@@ -1436,110 +1331,45 @@ function loadCardsDashboard(transactions) {
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#b3b3b3' } } } }
         });
     }
-    
-    document.getElementById('detailTableHead').innerHTML = `<tr><th>Cartão</th><th>Total</th><th>Qtd</th><th>Limite</th><th>%</th></tr>`;
-    document.getElementById('detailTableBody').innerHTML = sorted.map(([n, d]) => {
-        const card = cards.find(c => c.name === n);
-        const limit = card ? card.limit : 0;
-        const pct = limit > 0 ? (d.total/limit)*100 : 0;
-        return `<tr><td><span class="card-badge">💳 ${n}</span></td><td style="color:#F44336;font-weight:600;">${formatCurrency(d.total)}</td><td>${d.count}</td><td>${formatCurrency(limit)}</td><td><div style="display:flex;align-items:center;gap:8px;"><div class="progress-bar" style="flex:1;height:6px;"><div class="progress-fill" style="width:${Math.min(pct,100)}%;background:${pct>80?'#F44336':pct>50?'#FF9800':'#4CAF50'};"></div></div><span>${pct.toFixed(1)}%</span></div></td></tr>`;
-    }).join('');
-    
-    document.getElementById('smartDashboardAnalysis').innerHTML = `<p>💳 <strong>${cardTransactions.length} transações</strong> com cartão. Gasto total: <strong style="color:#F44336;">${formatCurrency(totalSpent)}</strong>.</p>`;
 }
 
 function loadIncomeDashboard(transactions) {
     const incomeTransactions = transactions.filter(t => t.type === 'entrada');
     const catSummary = {};
-    incomeTransactions.forEach(t => { if(!catSummary[t.category]) catSummary[t.category]={total:0,count:0}; catSummary[t.category].total+=parseFloat(t.value); catSummary[t.category].count++; });
+    incomeTransactions.forEach(t => { if(!catSummary[t.category]) catSummary[t.category]={total:0,count:0}; catSummary[t.category].total+=parseFloat(t.value||0); catSummary[t.category].count++; });
     const totalIncome = Object.values(catSummary).reduce((s,c)=>s+c.total,0);
     
-    document.getElementById('dashboardSummaryCards').innerHTML = `
-        <div class="summary-mini-card"><div class="mini-icon" style="background:rgba(76,175,80,0.1);color:#4CAF50;"><i class="fas fa-arrow-up"></i></div><div class="mini-label">Total</div><div class="mini-value" style="color:#4CAF50;">${formatCurrency(totalIncome)}</div></div>
-        <div class="summary-mini-card"><div class="mini-icon" style="background:rgba(33,150,243,0.1);color:#2196F3;"><i class="fas fa-receipt"></i></div><div class="mini-label">Transações</div><div class="mini-value">${incomeTransactions.length}</div></div>
-        <div class="summary-mini-card"><div class="mini-icon" style="background:rgba(156,39,176,0.1);color:#9C27B0;"><i class="fas fa-trophy"></i></div><div class="mini-label">Maior Fonte</div><div class="mini-value" style="font-size:14px;">${Object.entries(catSummary).sort(([,a],[,b])=>b.total-a.total)[0]?.[0]||'N/A'}</div></div>
-    `;
-    
-    const sorted = Object.entries(catSummary).sort(([,a],[,b])=>b.total-a.total);
-    const canvas = document.getElementById('mainDashboardChart');
-    if (canvas && sorted.length > 0) {
-        new Chart(canvas.getContext('2d'), {
-            type: dashboardChartType,
-            data: { labels: sorted.map(([n])=>n), datasets: [{ label: 'Entradas', data: sorted.map(([,d])=>d.total), backgroundColor: ['#4CAF50','#8BC34A','#CDDC39','#FFEB3B'], borderWidth:2, borderColor:'#16213e' }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#b3b3b3' } } } }
-        });
-    }
-    
-    document.getElementById('detailTableHead').innerHTML = `<tr><th>Categoria</th><th>Total</th><th>Qtd</th><th>%</th></tr>`;
-    document.getElementById('detailTableBody').innerHTML = sorted.map(([n,d]) => `<tr><td><span class="category-badge"><i class="fas fa-${getCategoryIcon(n)}"></i> ${n}</span></td><td style="color:#4CAF50;font-weight:600;">${formatCurrency(d.total)}</td><td>${d.count}</td><td>${((d.total/totalIncome)*100).toFixed(1)}%</td></tr>`).join('');
-    
-    document.getElementById('smartDashboardAnalysis').innerHTML = `<p>✅ Total de entradas: <strong style="color:#4CAF50;">${formatCurrency(totalIncome)}</strong>. Média por transação: <strong>${incomeTransactions.length>0?formatCurrency(totalIncome/incomeTransactions.length):'R\$ 0,00'}</strong></p>`;
+    const summaryCards = document.getElementById('dashboardSummaryCards');
+    if (summaryCards) summaryCards.innerHTML = `<div class="summary-mini-card"><div class="mini-icon" style="background:rgba(76,175,80,0.1);color:#4CAF50;"><i class="fas fa-arrow-up"></i></div><div class="mini-label">Total</div><div class="mini-value" style="color:#4CAF50;">${formatCurrency(totalIncome)}</div></div>`;
 }
 
 function loadExpenseDashboard(transactions) {
     const expenseTransactions = transactions.filter(t => t.type === 'saida');
     const catSummary = {};
-    expenseTransactions.forEach(t => { if(!catSummary[t.category]) catSummary[t.category]={total:0,count:0}; catSummary[t.category].total+=parseFloat(t.value); catSummary[t.category].count++; });
+    expenseTransactions.forEach(t => { if(!catSummary[t.category]) catSummary[t.category]={total:0,count:0}; catSummary[t.category].total+=parseFloat(t.value||0); catSummary[t.category].count++; });
     const totalExpense = Object.values(catSummary).reduce((s,c)=>s+c.total,0);
     
-    document.getElementById('dashboardSummaryCards').innerHTML = `
-        <div class="summary-mini-card"><div class="mini-icon" style="background:rgba(244,67,54,0.1);color:#F44336;"><i class="fas fa-arrow-down"></i></div><div class="mini-label">Total</div><div class="mini-value" style="color:#F44336;">${formatCurrency(totalExpense)}</div></div>
-        <div class="summary-mini-card"><div class="mini-icon" style="background:rgba(33,150,243,0.1);color:#2196F3;"><i class="fas fa-receipt"></i></div><div class="mini-label">Transações</div><div class="mini-value">${expenseTransactions.length}</div></div>
-        <div class="summary-mini-card"><div class="mini-icon" style="background:rgba(255,152,0,0.1);color:#FF9800;"><i class="fas fa-exclamation-triangle"></i></div><div class="mini-label">Maior Gasto</div><div class="mini-value" style="font-size:14px;">${Object.entries(catSummary).sort(([,a],[,b])=>b.total-a.total)[0]?.[0]||'N/A'}</div></div>
-        <div class="summary-mini-card"><div class="mini-icon" style="background:rgba(156,39,176,0.1);color:#9C27B0;"><i class="fas fa-calculator"></i></div><div class="mini-label">Média/Dia</div><div class="mini-value">${formatCurrency(totalExpense/Math.max(1,getDaysInPeriod()))}</div></div>
-    `;
-    
-    const sorted = Object.entries(catSummary).sort(([,a],[,b])=>b.total-a.total);
-    const canvas = document.getElementById('mainDashboardChart');
-    if (canvas && sorted.length > 0) {
-        new Chart(canvas.getContext('2d'), {
-            type: dashboardChartType,
-            data: { labels: sorted.map(([n])=>n), datasets: [{ label: 'Saídas', data: sorted.map(([,d])=>d.total), backgroundColor: ['#F44336','#E91E63','#9C27B0','#673AB7'], borderWidth:2, borderColor:'#16213e' }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#b3b3b3' } } } }
-        });
-    }
-    
-    document.getElementById('detailTableHead').innerHTML = `<tr><th>Categoria</th><th>Total</th><th>Qtd</th><th>%</th></tr>`;
-    document.getElementById('detailTableBody').innerHTML = sorted.map(([n,d]) => `<tr><td><span class="category-badge"><i class="fas fa-${getCategoryIcon(n)}"></i> ${n}</span></td><td style="color:#F44336;font-weight:600;">${formatCurrency(d.total)}</td><td>${d.count}</td><td>${((d.total/totalExpense)*100).toFixed(1)}%</td></tr>`).join('');
-    
-    document.getElementById('smartDashboardAnalysis').innerHTML = `<p>📉 Total de saídas: <strong style="color:#F44336;">${formatCurrency(totalExpense)}</strong>. Média diária: <strong>${formatCurrency(totalExpense/Math.max(1,getDaysInPeriod()))}</strong></p>`;
+    const summaryCards = document.getElementById('dashboardSummaryCards');
+    if (summaryCards) summaryCards.innerHTML = `<div class="summary-mini-card"><div class="mini-icon" style="background:rgba(244,67,54,0.1);color:#F44336;"><i class="fas fa-arrow-down"></i></div><div class="mini-label">Total</div><div class="mini-value" style="color:#F44336;">${formatCurrency(totalExpense)}</div></div>`;
 }
 
 function loadCategoriesDashboard(transactions) {
     const catSummary = {};
     transactions.forEach(t => {
         if(!catSummary[t.category]) catSummary[t.category]={entrada:0,saida:0,count:0};
-        if(t.type==='entrada') catSummary[t.category].entrada+=parseFloat(t.value);
-        else catSummary[t.category].saida+=parseFloat(t.value);
+        if(t.type==='entrada') catSummary[t.category].entrada+=parseFloat(t.value||0);
+        else catSummary[t.category].saida+=parseFloat(t.value||0);
         catSummary[t.category].count++;
     });
     
     const totalEntrada = Object.values(catSummary).reduce((s,c)=>s+c.entrada,0);
     const totalSaida = Object.values(catSummary).reduce((s,c)=>s+c.saida,0);
     
-    document.getElementById('dashboardSummaryCards').innerHTML = `
+    const summaryCards = document.getElementById('dashboardSummaryCards');
+    if (summaryCards) summaryCards.innerHTML = `
         <div class="summary-mini-card"><div class="mini-icon" style="background:rgba(76,175,80,0.1);color:#4CAF50;"><i class="fas fa-arrow-up"></i></div><div class="mini-label">Entradas</div><div class="mini-value" style="color:#4CAF50;">${formatCurrency(totalEntrada)}</div></div>
         <div class="summary-mini-card"><div class="mini-icon" style="background:rgba(244,67,54,0.1);color:#F44336;"><i class="fas fa-arrow-down"></i></div><div class="mini-label">Saídas</div><div class="mini-value" style="color:#F44336;">${formatCurrency(totalSaida)}</div></div>
-        <div class="summary-mini-card"><div class="mini-icon" style="background:rgba(33,150,243,0.1);color:#2196F3;"><i class="fas fa-tags"></i></div><div class="mini-label">Categorias</div><div class="mini-value">${Object.keys(catSummary).length}</div></div>
     `;
-    
-    const sorted = Object.entries(catSummary).sort(([,a],[,b])=>(b.entrada+b.saida)-(a.entrada+a.saida));
-    const canvas = document.getElementById('mainDashboardChart');
-    if (canvas && sorted.length > 0) {
-        new Chart(canvas.getContext('2d'), {
-            type: dashboardChartType,
-            data: { labels: sorted.map(([n])=>n), datasets: [{ label: 'Entradas', data: sorted.map(([,d])=>d.entrada), backgroundColor: 'rgba(76,175,80,0.6)', borderColor: '#4CAF50', borderWidth: 2 }, { label: 'Saídas', data: sorted.map(([,d])=>d.saida), backgroundColor: 'rgba(244,67,54,0.6)', borderColor: '#F44336', borderWidth: 2 }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#b3b3b3' } } } }
-        });
-    }
-    
-    document.getElementById('detailTableHead').innerHTML = `<tr><th>Categoria</th><th>Entradas</th><th>Saídas</th><th>Saldo</th><th>Qtd</th></tr>`;
-    document.getElementById('detailTableBody').innerHTML = sorted.map(([n,d]) => {
-        const saldo = d.entrada - d.saida;
-        return `<tr><td><span class="category-badge"><i class="fas fa-${getCategoryIcon(n)}"></i> ${n}</span></td><td style="color:#4CAF50;">${d.entrada>0?formatCurrency(d.entrada):'-'}</td><td style="color:#F44336;">${d.saida>0?formatCurrency(d.saida):'-'}</td><td style="color:${saldo>=0?'#4CAF50':'#F44336'};font-weight:600;">${formatCurrency(saldo)}</td><td>${d.count}</td></tr>`;
-    }).join('');
-    
-    document.getElementById('smartDashboardAnalysis').innerHTML = `<p>📊 <strong>${Object.keys(catSummary).length} categorias</strong> com transações. Saldo total: <strong style="color:${totalEntrada-totalSaida>=0?'#4CAF50':'#F44336'};">${formatCurrency(totalEntrada-totalSaida)}</strong></p>`;
 }
 
 function loadMonthlyDashboard(transactions) {
@@ -1548,8 +1378,8 @@ function loadMonthlyDashboard(transactions) {
         if(!t.date) return;
         const month = t.date.substring(0,7);
         if(!monthlySummary[month]) monthlySummary[month]={entrada:0,saida:0,count:0};
-        if(t.type==='entrada') monthlySummary[month].entrada+=parseFloat(t.value);
-        else monthlySummary[month].saida+=parseFloat(t.value);
+        if(t.type==='entrada') monthlySummary[month].entrada+=parseFloat(t.value||0);
+        else monthlySummary[month].saida+=parseFloat(t.value||0);
         monthlySummary[month].count++;
     });
     
@@ -1557,38 +1387,20 @@ function loadMonthlyDashboard(transactions) {
     const totalEntrada = Object.values(monthlySummary).reduce((s,m)=>s+m.entrada,0);
     const totalSaida = Object.values(monthlySummary).reduce((s,m)=>s+m.saida,0);
     
-    document.getElementById('dashboardSummaryCards').innerHTML = `
+    const summaryCards = document.getElementById('dashboardSummaryCards');
+    if (summaryCards) summaryCards.innerHTML = `
         <div class="summary-mini-card"><div class="mini-icon" style="background:rgba(76,175,80,0.1);color:#4CAF50;"><i class="fas fa-arrow-up"></i></div><div class="mini-label">Entradas</div><div class="mini-value" style="color:#4CAF50;">${formatCurrency(totalEntrada)}</div></div>
         <div class="summary-mini-card"><div class="mini-icon" style="background:rgba(244,67,54,0.1);color:#F44336;"><i class="fas fa-arrow-down"></i></div><div class="mini-label">Saídas</div><div class="mini-value" style="color:#F44336;">${formatCurrency(totalSaida)}</div></div>
-        <div class="summary-mini-card"><div class="mini-icon" style="background:rgba(33,150,243,0.1);color:#2196F3;"><i class="fas fa-calendar-alt"></i></div><div class="mini-label">Meses</div><div class="mini-value">${Object.keys(monthlySummary).length}</div></div>
     `;
     
     const canvas = document.getElementById('mainDashboardChart');
     if (canvas && sorted.length > 0) {
         new Chart(canvas.getContext('2d'), {
-            type: dashboardChartType === 'pie' || dashboardChartType === 'doughnut' ? 'bar' : dashboardChartType,
-            data: { labels: sorted.map(([m])=>{const [y,mo]=m.split('-'); return new Date(y,mo-1).toLocaleDateString('pt-BR',{month:'short',year:'2-digit'});}), datasets: [{ label: 'Entradas', data: sorted.map(([,d])=>d.entrada), backgroundColor: 'rgba(76,175,80,0.6)', borderColor: '#4CAF50', borderWidth: 2, borderRadius: 4 }, { label: 'Saídas', data: sorted.map(([,d])=>d.saida), backgroundColor: 'rgba(244,67,54,0.6)', borderColor: '#F44336', borderWidth: 2, borderRadius: 4 }] },
+            type: 'bar',
+            data: { labels: sorted.map(([m])=>{const [y,mo]=m.split('-'); return new Date(y,mo-1).toLocaleDateString('pt-BR',{month:'short',year:'2-digit'});}), datasets: [{ label: 'Entradas', data: sorted.map(([,d])=>d.entrada), backgroundColor: 'rgba(76,175,80,0.6)' }, { label: 'Saídas', data: sorted.map(([,d])=>d.saida), backgroundColor: 'rgba(244,67,54,0.6)' }] },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#b3b3b3' } } } }
         });
     }
-    
-    document.getElementById('detailTableHead').innerHTML = `<tr><th>Mês</th><th>Entradas</th><th>Saídas</th><th>Saldo</th><th>Economia</th></tr>`;
-    document.getElementById('detailTableBody').innerHTML = sorted.map(([m,d]) => {
-        const saldo = d.entrada - d.saida;
-        const economia = d.entrada > 0 ? ((saldo/d.entrada)*100) : 0;
-        const [y,mo] = m.split('-');
-        const monthName = new Date(y,mo-1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
-        return `<tr><td><strong>${monthName}</strong></td><td style="color:#4CAF50;">${formatCurrency(d.entrada)}</td><td style="color:#F44336;">${formatCurrency(d.saida)}</td><td style="color:${saldo>=0?'#4CAF50':'#F44336'};font-weight:600;">${formatCurrency(saldo)}</td><td style="color:${economia>=0?'#4CAF50':'#F44336'};">${economia.toFixed(1)}%</td></tr>`;
-    }).join('');
-    
-    const bestMonth = sorted.reduce((b,c)=>(c[1].entrada-c[1].saida)>(b?.[1]?.entrada-b?.[1]?.saida||-Infinity)?c:b,null);
-    const worstMonth = sorted.reduce((w,c)=>(c[1].entrada-c[1].saida)<(w?.[1]?.entrada-w?.[1]?.saida||Infinity)?c:w,null);
-    
-    document.getElementById('smartDashboardAnalysis').innerHTML = `
-        <p>📊 Análise de <strong>${sorted.length} meses</strong>.</p>
-        ${bestMonth?`<p>🏆 Melhor mês: <strong>${new Date(bestMonth[0]+'-01').toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}</strong> (${formatCurrency(bestMonth[1].entrada-bestMonth[1].saida)})</p>`:''}
-        ${worstMonth?`<p>⚠️ Pior mês: <strong>${new Date(worstMonth[0]+'-01').toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}</strong> (${formatCurrency(worstMonth[1].entrada-worstMonth[1].saida)})</p>`:''}
-    `;
 }
 
 function getDaysInPeriod() {
@@ -1601,6 +1413,9 @@ function getDaysInPeriod() {
 // BUDGET
 // ============================================
 function openBudgetModal() {
+    const monthFilter = document.getElementById('monthFilter');
+    const currentMonth = monthFilter ? monthFilter.value : new Date().toISOString().slice(0, 7);
+    
     const html = `
         <div class="modal active" id="budgetModal">
             <div class="modal-content">
@@ -1608,7 +1423,7 @@ function openBudgetModal() {
                 <form id="budgetForm">
                     <div class="form-group"><label>Categoria</label><select id="budgetCategory" required>${settings.categories.filter(c=>c.type==='saida'||c.type==='ambos').map(c=>`<option value="${c.name}">${c.name}</option>`).join('')}</select></div>
                     <div class="form-group"><label>Valor</label><input type="number" id="budgetAmount" step="0.01" required></div>
-                    <div class="form-group"><label>Mês</label><input type="month" id="budgetMonth" required value="${document.getElementById('monthFilter').value}"></div>
+                    <div class="form-group"><label>Mês</label><input type="month" id="budgetMonth" required value="${currentMonth}"></div>
                     <button type="submit" class="btn-submit">Salvar</button>
                 </form>
             </div>
@@ -1620,26 +1435,27 @@ function openBudgetModal() {
         saveBudgets();
         renderBudgets();
         document.getElementById('budgetModal').remove();
+        showNotification('Orçamento criado!', 'success');
     });
 }
 
 function renderBudgets() {
     const grid = document.getElementById('budgetGrid');
     if (!grid) return;
-    const month = document.getElementById('monthFilter').value;
+    const month = document.getElementById('monthFilter')?.value || new Date().toISOString().slice(0, 7);
     const monthBudgets = budgets.filter(b => b.month === month);
     if (monthBudgets.length === 0) {
-        grid.innerHTML = `<div style="text-align:center;padding:60px;"><i class="fas fa-wallet" style="font-size:64px;color:#6C63FF;margin-bottom:20px;display:block;"></i><h3 style="color:#b3b3b3;">Nenhum orçamento</h3><button class="btn-add" onclick="openBudgetModal()">Criar Orçamento</button></div>`;
+        grid.innerHTML = `<div style="text-align:center;padding:60px;"><h3 style="color:#b3b3b3;">Nenhum orçamento</h3><button class="btn-add" onclick="openBudgetModal()">Criar Orçamento</button></div>`;
         return;
     }
     grid.innerHTML = monthBudgets.map(b => {
-        const spent = transactions.filter(t => t.type==='saida' && t.category===b.category && t.date.startsWith(month)).reduce((s,t) => s+parseFloat(t.value), 0);
+        const spent = transactions.filter(t => t.type==='saida' && t.category===b.category && t.date?.startsWith(month)).reduce((s,t) => s+parseFloat(t.value||0), 0);
         const pct = b.amount > 0 ? (spent/b.amount)*100 : 0;
         const status = pct > 100 ? 'exceeded' : pct > 80 ? 'warning' : 'good';
         return `<div class="budget-item">
-            <div class="budget-header"><h3><i class="fas fa-${getCategoryIcon(b.category)}"></i> ${b.category}</h3><span class="budget-status status-${status}">${status==='exceeded'?'Estourado':status==='warning'?'Atenção':'OK'}</span></div>
-            <div class="budget-info"><div><small>Planejado</small><p>${formatCurrency(b.amount)}</p></div><div><small>Gasto</small><p>${formatCurrency(spent)}</p></div><div><small>Restante</small><p class="${b.amount-spent<0?'negative':'positive'}">${formatCurrency(Math.abs(b.amount-spent))}</p></div></div>
-            <div class="budget-progress"><div class="progress-bar"><div class="progress-fill" style="width:${Math.min(pct,100)}%;background:${status==='exceeded'?'#F44336':status==='warning'?'#FF9800':'#4CAF50'}"></div></div><span class="progress-percent">${pct.toFixed(1)}%</span></div>
+            <div class="budget-header"><h3>${b.category}</h3><span class="budget-status status-${status}">${status==='exceeded'?'Estourado':status==='warning'?'Atenção':'OK'}</span></div>
+            <div class="budget-info"><div><small>Planejado</small><p>${formatCurrency(b.amount)}</p></div><div><small>Gasto</small><p>${formatCurrency(spent)}</p></div></div>
+            <div class="budget-progress"><div class="progress-bar"><div class="progress-fill" style="width:${Math.min(pct,100)}%;background:${status==='exceeded'?'#F44336':status==='warning'?'#FF9800':'#4CAF50'}"></div></div><span>${pct.toFixed(1)}%</span></div>
         </div>`;
     }).join('');
 }
@@ -1651,6 +1467,185 @@ function deleteBudget(id) {
         renderBudgets();
     }
 }
+
+// ============================================
+// SINCRONIZAÇÃO GITHUB GIST
+// ============================================
+async function saveToGist() {
+    if (!GITHUB_TOKEN || GITHUB_TOKEN === '') {
+        console.warn('⚠️ Token não configurado. Configure nas Configurações ou use o console.');
+        showNotification('⚠️ Token do GitHub não configurado! Vá em Configurações.', 'error');
+        return false;
+    }
+    
+    try {
+        console.log('🔑 Usando token:', GITHUB_TOKEN.substring(0, 8) + '...');
+        
+        const data = { 
+            transactions, cards, budgets, debtors, settings, 
+            lastSync: new Date().toISOString() 
+        };
+        
+        const response = await fetch(GIST_API_URL, {
+            method: 'PATCH',
+            headers: { 
+                'Authorization': `token ${GITHUB_TOKEN}`, 
+                'Content-Type': 'application/json', 
+                'Accept': 'application/vnd.github.v3+json' 
+            },
+            body: JSON.stringify({ 
+                files: { [GIST_FILENAME]: { content: JSON.stringify(data, null, 2) } } 
+            })
+        });
+        
+        if (response.ok) { 
+            console.log('✅ Salvo no Gist'); 
+            return true; 
+        }
+        
+        if (response.status === 401) {
+            console.error('❌ Token inválido ou expirado!');
+            showNotification('❌ Token inválido! Gere um novo em github.com/settings/tokens', 'error');
+            localStorage.removeItem('github_token');
+            GITHUB_TOKEN = '';
+        } else {
+            console.error('❌ Erro ao salvar:', response.status);
+        }
+        return false;
+    } catch(e) { 
+        console.error('❌ Erro de conexão:', e); 
+        showNotification('❌ Sem conexão com GitHub', 'error');
+        return false; 
+    }
+}
+
+async function loadFromGist() {
+    if (!GITHUB_TOKEN) return false;
+    try {
+        const response = await fetch(GIST_API_URL, {
+            headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json' }
+        });
+        if (response.ok) {
+            const gist = await response.json();
+            const file = gist.files[GIST_FILENAME];
+            if (file && file.content && file.content.trim() !== '{}') {
+                const data = JSON.parse(file.content);
+                if (data.transactions) { transactions = data.transactions; saveTransactionsLocal(); }
+                if (data.cards) { cards = data.cards; saveCardsLocal(); }
+                if (data.budgets) { budgets = data.budgets; saveBudgetsLocal(); }
+                if (data.debtors) { debtors = data.debtors; saveDebtorsLocal(); }
+                if (data.settings) { settings = data.settings; saveSettingsLocal(); }
+                console.log('✅ Carregado do Gist');
+                return true;
+            }
+        }
+        return false;
+    } catch(e) { console.error(e); return false; }
+}
+
+async function fullSync() {
+    if (!GITHUB_TOKEN) { 
+        showNotification('❌ Configure o token do GitHub primeiro!\nVá em Configurações > Token do GitHub', 'error');
+        
+        // Perguntar se quer configurar agora
+        setTimeout(() => {
+            const token = prompt(
+                '🔐 Token do GitHub necessário!\n\n' +
+                '1. Acesse: https://github.com/settings/tokens\n' +
+                '2. Generate new token (classic)\n' +
+                '3. Marque permissão "gist"\n' +
+                '4. Cole o token abaixo:\n\n' +
+                'Token (ghp_...):'
+            );
+            if (token && token.startsWith('ghp_')) {
+                GITHUB_TOKEN = token;
+                localStorage.setItem('github_token', token);
+                location.reload();
+            }
+        }, 500);
+        return; 
+    }
+    
+    const btns = document.querySelectorAll('.btn-sync');
+    btns.forEach(b => { b.disabled = true; b.style.opacity = '0.7'; });
+    
+    try {
+        showNotification('🔄 Sincronizando com GitHub...', 'success');
+        const loaded = await loadFromGist();
+        
+        if (loaded) {
+            updateDashboard();
+            renderTransactions();
+            renderCards();
+            renderDebtors();
+            renderDebtorsSummary();
+            updateCardSelect();
+            updateDebtorSelect();
+            updateCategorySelects();
+            updateCardSpending();
+            applyTheme(settings.theme || 'dark');
+            updateMonthProgress();
+            showNotification('✅ Dados carregados do GitHub!', 'success');
+        } else {
+            showNotification('📤 Enviando dados para o GitHub...', 'success');
+            const saved = await saveToGist();
+            if (saved) {
+                showNotification('✅ Dados enviados!', 'success');
+            }
+        }
+    } catch(e) { 
+        showNotification('❌ Erro na sincronização', 'error'); 
+    } finally { 
+        btns.forEach(b => { b.disabled = false; b.style.opacity = '1'; }); 
+    }
+}
+
+async function forceSaveToGist() {
+    if (!GITHUB_TOKEN) { showNotification('❌ Token não configurado!', 'error'); return; }
+    const saved = await saveToGist();
+    showNotification(saved ? '✅ Salvo!' : '❌ Erro', saved ? 'success' : 'error');
+}
+
+async function autoSyncAll() {
+    if (!GITHUB_TOKEN) return;
+    try {
+        const loaded = await loadFromGist();
+        if (loaded) {
+            updateDashboard();
+            renderTransactions();
+            renderCards();
+            renderDebtors();
+            renderDebtorsSummary();
+            updateCardSelect();
+            updateDebtorSelect();
+            updateCardSpending();
+            applyTheme(settings.theme || 'dark');
+            updateMonthProgress();
+        }
+    } catch(e) { console.log('Usando dados locais'); }
+}
+
+let _saveTimeout;
+function autoSaveToGist() {
+    if (!GITHUB_TOKEN) return;
+    clearTimeout(_saveTimeout);
+    _saveTimeout = setTimeout(() => saveToGist(), 2000);
+}
+
+// ============================================
+// STORAGE
+// ============================================
+function saveTransactionsLocal() { localStorage.setItem('transactions', JSON.stringify(transactions)); updateCardSpending(); }
+function saveCardsLocal() { localStorage.setItem('cards', JSON.stringify(cards)); }
+function saveBudgetsLocal() { localStorage.setItem('budgets', JSON.stringify(budgets)); }
+function saveDebtorsLocal() { localStorage.setItem('debtors', JSON.stringify(debtors)); }
+function saveSettingsLocal() { localStorage.setItem('financeSettings', JSON.stringify(settings)); }
+
+function saveTransactions() { saveTransactionsLocal(); autoSaveToGist(); }
+function saveCards() { saveCardsLocal(); autoSaveToGist(); }
+function saveBudgets() { saveBudgetsLocal(); autoSaveToGist(); }
+function saveDebtors() { saveDebtorsLocal(); autoSaveToGist(); }
+function saveSettings() { saveSettingsLocal(); autoSaveToGist(); }
 
 // ============================================
 // UTILITÁRIOS
@@ -1683,7 +1678,9 @@ function showNotification(msg, type='success') {
 // MODAIS
 // ============================================
 function openAddModal() {
-    document.getElementById('transactionModal').classList.add('active');
+    const modal = document.getElementById('transactionModal');
+    if (!modal) return;
+    modal.classList.add('active');
     document.getElementById('transDate').value = new Date().toISOString().slice(0, 10);
     document.getElementById('installmentsGroup').style.display = 'none';
     document.getElementById('installmentPreview').style.display = 'none';
@@ -1701,8 +1698,10 @@ function openAddModal() {
 }
 
 function closeModal() {
-    document.getElementById('transactionModal').classList.remove('active');
-    document.getElementById('transactionForm').reset();
+    const modal = document.getElementById('transactionModal');
+    if (modal) modal.classList.remove('active');
+    const form = document.getElementById('transactionForm');
+    if (form) form.reset();
 }
 
 function closeAllModals() {
@@ -1729,25 +1728,16 @@ function applyTheme(theme) {
 }
 
 function updateCurrencySetting() {
-    settings.currency = document.getElementById('currencySetting').value;
+    settings.currency = document.getElementById('currencySetting')?.value || 'BRL';
     saveSettings();
     updateDashboard();
 }
 
 function updateThemeSetting() {
-    settings.theme = document.getElementById('themeSetting').value;
+    settings.theme = document.getElementById('themeSetting')?.value || 'dark';
     saveSettings();
     applyTheme(settings.theme);
 }
-
-// ============================================
-// STORAGE
-// ============================================
-function saveTransactions() { localStorage.setItem('transactions', JSON.stringify(transactions)); updateCardSpending(); autoSaveToGist(); }
-function saveCards() { localStorage.setItem('cards', JSON.stringify(cards)); autoSaveToGist(); }
-function saveBudgets() { localStorage.setItem('budgets', JSON.stringify(budgets)); autoSaveToGist(); }
-function saveDebtors() { localStorage.setItem('debtors', JSON.stringify(debtors)); autoSaveToGist(); }
-function saveSettings() { localStorage.setItem('financeSettings', JSON.stringify(settings)); autoSaveToGist(); }
 
 // ============================================
 // EXPORT/IMPORT
@@ -1782,7 +1772,6 @@ function importData(file) {
             renderCategories();
             renderCardsSettings();
             renderDebtors();
-            renderDebtorsSummary();
             applyTheme(settings.theme || 'dark');
             showNotification('Dados importados!', 'success');
         } catch(err) { alert('Arquivo inválido!'); }
@@ -1790,7 +1779,9 @@ function importData(file) {
     reader.readAsText(file);
 }
 
-// Close modals on outside click
+// ============================================
+// CLOSE MODALS ON OUTSIDE CLICK
+// ============================================
 window.onclick = function(event) {
     if (event.target.classList.contains('modal')) {
         event.target.classList.remove('active');
@@ -1800,14 +1791,5 @@ window.onclick = function(event) {
 // ============================================
 // INICIALIZAÇÃO FINAL
 // ============================================
-document.addEventListener('DOMContentLoaded', function() {
-    const saved = localStorage.getItem('debtors');
-    if (saved) debtors = JSON.parse(saved);
-    const now = new Date();
-    dashboardDateStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-    dashboardDateEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-});
-
-console.log('✅ Script carregado com sucesso!');
-console.log('💾 Armazenamento: GitHub Gist');
-console.log('📊 Funcionalidades: Home, Dashboard Modular, Transações, Cartões, Orçamento, Configurações, Devedores');
+console.log('✅ Script.js carregado com sucesso!');
+console.log('💡 Todas as funções estão disponíveis globalmente.');
