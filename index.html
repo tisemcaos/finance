@@ -9,6 +9,33 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
+    <!-- PIN Overlay -->
+    <div id="pinOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-dark); z-index: 9999; display: flex; align-items: center; justify-content: center;"></div>
+
+    <!-- PIN Modal -->
+    <div class="modal" id="pinModal" style="display: flex; z-index: 10000;">
+        <div class="modal-content" style="max-width: 380px; text-align: center;">
+            <div style="font-size: 48px; margin-bottom: 16px;">🔐</div>
+            <h2 style="margin-bottom: 8px;">Digite seu PIN</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 20px; font-size: 14px;">
+                PIN de acesso ao Finance Dashboard
+            </p>
+            <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 16px;">
+                <input type="password" id="pinInput" maxlength="6" 
+                       style="width: 200px; padding: 14px; text-align: center; font-size: 24px; letter-spacing: 8px; 
+                              background: rgba(255,255,255,0.05); border: 2px solid var(--border-color); 
+                              border-radius: 12px; color: var(--text-primary); outline: none;"
+                       placeholder="****">
+            </div>
+            <button class="btn-submit" id="pinSubmitBtn" style="width: 200px; margin: 0 auto;">
+                <i class="fas fa-lock-open"></i> Acessar
+            </button>
+            <p id="pinError" style="color: #F44336; margin-top: 12px; font-size: 13px; display: none;">
+                PIN incorreto! Tente novamente.
+            </p>
+        </div>
+    </div>
+
     <div class="container">
         <!-- Sidebar -->
         <aside class="sidebar">
@@ -17,13 +44,11 @@
                 <span>Finance BI</span>
             </div>
             <nav class="nav-menu">
-                <!-- Home -->
                 <a href="#" class="nav-item active" data-page="home">
                     <i class="fas fa-home"></i>
                     <span>Home</span>
                 </a>
                 
-                <!-- Dashboard com Submenu -->
                 <div class="nav-item-group">
                     <a href="#" class="nav-item nav-parent" data-page="dashboard" onclick="toggleSubmenu(event, 'dashboard-submenu')">
                         <i class="fas fa-chart-pie"></i>
@@ -32,66 +57,53 @@
                     </a>
                     <div class="submenu" id="dashboard-submenu">
                         <a href="#" class="submenu-item" data-dashboard="overview">
-                            <i class="fas fa-chart-line"></i>
-                            <span>Visão Geral</span>
+                            <i class="fas fa-chart-line"></i><span>Visão Geral</span>
                         </a>
                         <a href="#" class="submenu-item" data-dashboard="debtors">
-                            <i class="fas fa-users"></i>
-                            <span>Devedores</span>
+                            <i class="fas fa-users"></i><span>Devedores</span>
                         </a>
                         <a href="#" class="submenu-item" data-dashboard="cards">
-                            <i class="fas fa-credit-card"></i>
-                            <span>Cartões</span>
+                            <i class="fas fa-credit-card"></i><span>Cartões</span>
                         </a>
                         <a href="#" class="submenu-item" data-dashboard="income">
-                            <i class="fas fa-arrow-up"></i>
-                            <span>Entradas</span>
+                            <i class="fas fa-arrow-up"></i><span>Entradas</span>
                         </a>
                         <a href="#" class="submenu-item" data-dashboard="expense">
-                            <i class="fas fa-arrow-down"></i>
-                            <span>Saídas</span>
+                            <i class="fas fa-arrow-down"></i><span>Saídas</span>
                         </a>
                         <a href="#" class="submenu-item" data-dashboard="categories">
-                            <i class="fas fa-tags"></i>
-                            <span>Categorias</span>
+                            <i class="fas fa-tags"></i><span>Categorias</span>
                         </a>
                         <a href="#" class="submenu-item" data-dashboard="monthly">
-                            <i class="fas fa-calendar-alt"></i>
-                            <span>Comparativo Mensal</span>
+                            <i class="fas fa-calendar-alt"></i><span>Comparativo Mensal</span>
                         </a>
                     </div>
                 </div>
                 
                 <a href="#" class="nav-item" data-page="transactions">
-                    <i class="fas fa-exchange-alt"></i>
-                    <span>Transações</span>
+                    <i class="fas fa-exchange-alt"></i><span>Transações</span>
                 </a>
                 <a href="#" class="nav-item" data-page="cards">
-                    <i class="fas fa-credit-card"></i>
-                    <span>Cartões</span>
+                    <i class="fas fa-credit-card"></i><span>Cartões</span>
                 </a>
                 <a href="#" class="nav-item" data-page="budget">
-                    <i class="fas fa-wallet"></i>
-                    <span>Orçamento</span>
+                    <i class="fas fa-wallet"></i><span>Orçamento</span>
                 </a>
                 <a href="#" class="nav-item" data-page="settings">
-                    <i class="fas fa-cog"></i>
-                    <span>Configurações</span>
+                    <i class="fas fa-cog"></i><span>Configurações</span>
                 </a>
-				
             </nav>
             <div class="sidebar-footer">
-    <button class="btn-sync" onclick="fullSync()">
-        <i class="fab fa-github"></i> Sincronizar
-    </button>
-    <button class="btn-sync" onclick="forceSaveToGist()" style="background: var(--gradient-2); margin-top: 8px;">
-        <i class="fas fa-save"></i> Salvar Agora
-    </button>
-    <!-- Botão Sair -->
-    <button class="btn-sync" onclick="logout()" style="background: #F44336; margin-top: 8px;">
-        <i class="fas fa-sign-out-alt"></i> Sair
-    </button>
-</div>
+                <button class="btn-sync" onclick="fullSync()">
+                    <i class="fas fa-sync"></i> Sincronizar Planilha
+                </button>
+                <button class="btn-sync" onclick="logout()" style="background: #F44336; margin-top: 8px;">
+                    <i class="fas fa-sign-out-alt"></i> Sair
+                </button>
+                <a href="#" class="sheets-link" target="_blank" id="sheetsLink">
+                    <i class="fas fa-table"></i> Abrir Planilha
+                </a>
+            </div>
         </aside>
 
         <!-- Main Content -->
@@ -111,87 +123,51 @@
                 <div class="summary-cards">
                     <div class="card income-card">
                         <div class="card-icon"><i class="fas fa-arrow-up"></i></div>
-                        <div class="card-info">
-                            <h3>Entradas</h3>
-                            <p class="card-value" id="totalIncome">R$ 0,00</p>
-                            <span class="card-trend positive" id="incomeTrend">+0%</span>
-                        </div>
+                        <div class="card-info"><h3>Entradas</h3><p class="card-value" id="totalIncome">R$ 0,00</p><span class="card-trend positive" id="incomeTrend">+0%</span></div>
                     </div>
                     <div class="card expense-card">
                         <div class="card-icon"><i class="fas fa-arrow-down"></i></div>
-                        <div class="card-info">
-                            <h3>Saídas</h3>
-                            <p class="card-value" id="totalExpense">R$ 0,00</p>
-                            <span class="card-trend negative" id="expenseTrend">-0%</span>
-                        </div>
+                        <div class="card-info"><h3>Saídas</h3><p class="card-value" id="totalExpense">R$ 0,00</p><span class="card-trend negative" id="expenseTrend">-0%</span></div>
                     </div>
                     <div class="card balance-card">
                         <div class="card-icon"><i class="fas fa-balance-scale"></i></div>
-                        <div class="card-info">
-                            <h3>Saldo</h3>
-                            <p class="card-value" id="totalBalance">R$ 0,00</p>
-                            <span class="card-trend" id="balanceTrend">Saldo positivo</span>
-                        </div>
+                        <div class="card-info"><h3>Saldo</h3><p class="card-value" id="totalBalance">R$ 0,00</p><span class="card-trend" id="balanceTrend">Saldo positivo</span></div>
                     </div>
                     <div class="card savings-card">
                         <div class="card-icon"><i class="fas fa-piggy-bank"></i></div>
-                        <div class="card-info">
-                            <h3>Economia</h3>
-                            <p class="card-value" id="savingsRate">0%</p>
-                            <span class="card-trend">da renda</span>
-                        </div>
+                        <div class="card-info"><h3>Economia</h3><p class="card-value" id="savingsRate">0%</p><span class="card-trend">da renda</span></div>
                     </div>
                 </div>
 
-                <!-- Progresso do Mês -->
                 <div class="chart-card" style="margin-bottom: 30px;">
                     <h3><i class="fas fa-calendar-check"></i> Progresso do Mês</h3>
                     <div style="padding: 20px;">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                            <span>Dias decorridos</span>
-                            <span id="daysProgress">0%</span>
+                            <span>Dias decorridos</span><span id="daysProgress">0%</span>
                         </div>
                         <div class="progress-bar" style="height: 12px;">
                             <div class="progress-fill" id="monthProgressBar" style="width: 0%; background: var(--gradient-1);"></div>
                         </div>
                         <div style="display: flex; justify-content: space-between; margin-top: 8px; color: var(--text-secondary); font-size: 12px;">
-                            <span>Dia 1</span>
-                            <span id="currentDay">Dia 0</span>
-                            <span id="lastDay">Dia 30</span>
+                            <span>Dia 1</span><span id="currentDay">Dia 0</span><span id="lastDay">Dia 30</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Análise Inteligente -->
                 <div class="chart-card" style="margin-bottom: 30px;">
                     <h3><i class="fas fa-robot"></i> Análise Inteligente</h3>
                     <div id="smartAnalysis" style="padding: 16px; color: var(--text-secondary); line-height: 1.8;"></div>
                 </div>
 
                 <div class="charts-grid">
-                    <div class="chart-card">
-                        <h3>Fluxo de Caixa Mensal</h3>
-                        <canvas id="cashflowChart"></canvas>
-                    </div>
-                    <div class="chart-card">
-                        <h3>Despesas por Categoria</h3>
-                        <canvas id="categoryChart"></canvas>
-                    </div>
-                    <div class="chart-card">
-                        <h3>Evolução do Saldo</h3>
-                        <canvas id="balanceChart"></canvas>
-                    </div>
-                    <div class="chart-card">
-                        <h3>Gastos por Cartão</h3>
-                        <canvas id="cardChart"></canvas>
-                    </div>
+                    <div class="chart-card"><h3>Fluxo de Caixa Mensal</h3><canvas id="cashflowChart"></canvas></div>
+                    <div class="chart-card"><h3>Despesas por Categoria</h3><canvas id="categoryChart"></canvas></div>
+                    <div class="chart-card"><h3>Gastos por Cartão</h3><canvas id="cardChart"></canvas></div>
                 </div>
             </div>
 
-            <!-- Dashboard Page (Modular) -->
-            <div class="page" id="dashboard-page">
-                <div id="dashboardContainer"></div>
-            </div>
+            <!-- Dashboard Page -->
+            <div class="page" id="dashboard-page"><div id="dashboardContainer"></div></div>
 
             <!-- Transactions Page -->
             <div class="page" id="transactions-page">
@@ -199,30 +175,13 @@
                     <h1>Transações</h1>
                     <div class="header-actions">
                         <input type="text" class="search-input" placeholder="Buscar transações...">
-                        <select class="filter-select">
-                            <option>Todas</option>
-                            <option>Entradas</option>
-                            <option>Saídas</option>
-                        </select>
-                        <button class="btn-add" onclick="openAddModal()">
-                            <i class="fas fa-plus"></i> Adicionar
-                        </button>
+                        <select class="filter-select"><option>Todas</option><option>Entradas</option><option>Saídas</option></select>
+                        <button class="btn-add" onclick="openAddModal()"><i class="fas fa-plus"></i> Adicionar</button>
                     </div>
                 </header>
                 <div class="table-container">
                     <table class="transactions-table">
-                        <thead>
-                            <tr>
-                                <th>Data</th>
-                                <th>Tipo</th>
-                                <th>Categoria</th>
-                                <th>Descrição</th>
-                                <th>Cartão</th>
-                                <th>Devedor</th>
-                                <th>Valor</th>
-                                <th>Ações</th>
-                            </tr>
-                        </thead>
+                        <thead><tr><th>Data</th><th>Tipo</th><th>Categoria</th><th>Descrição</th><th>Cartão</th><th>Devedor</th><th>Valor</th><th>Ações</th></tr></thead>
                         <tbody id="transactionsBody"></tbody>
                     </table>
                 </div>
@@ -230,137 +189,51 @@
 
             <!-- Cards Page -->
             <div class="page" id="cards-page">
-                <header class="page-header">
-                    <h1>Meus Cartões</h1>
-                    <button class="btn-add" onclick="openAddCardSettingsModal()">
-                        <i class="fas fa-plus"></i> Novo Cartão
-                    </button>
-                </header>
+                <header class="page-header"><h1>Meus Cartões</h1><button class="btn-add" onclick="openAddCardSettingsModal()"><i class="fas fa-plus"></i> Novo Cartão</button></header>
                 <div class="cards-grid" id="cardsGrid"></div>
             </div>
 
             <!-- Budget Page -->
             <div class="page" id="budget-page">
-                <header class="page-header">
-                    <h1>Orçamento Mensal</h1>
-                    <button class="btn-add" onclick="openBudgetModal()">
-                        <i class="fas fa-plus"></i> Novo Orçamento
-                    </button>
-                </header>
+                <header class="page-header"><h1>Orçamento Mensal</h1><button class="btn-add" onclick="openBudgetModal()"><i class="fas fa-plus"></i> Novo Orçamento</button></header>
                 <div class="budget-grid" id="budgetGrid"></div>
             </div>
 
             <!-- Settings Page -->
             <div class="page" id="settings-page">
-                <header class="page-header">
-                    <h1>Configurações</h1>
-                    <button class="btn-add" onclick="exportData()">
-                        <i class="fas fa-download"></i> Exportar Dados
-                    </button>
-                </header>
+                <header class="page-header"><h1>Configurações</h1><button class="btn-add" onclick="exportData()"><i class="fas fa-download"></i> Exportar Dados</button></header>
                 <div class="settings-grid">
-                    <!-- Tipos de Transação -->
                     <div class="settings-card">
-                        <div class="settings-header">
-                            <h3><i class="fas fa-exchange-alt"></i> Tipos de Transação</h3>
-                            <button class="btn-add-small" onclick="openAddTypeModal()">
-                                <i class="fas fa-plus"></i> Adicionar
-                            </button>
-                        </div>
+                        <div class="settings-header"><h3><i class="fas fa-exchange-alt"></i> Tipos de Transação</h3><button class="btn-add-small" onclick="openAddTypeModal()"><i class="fas fa-plus"></i> Adicionar</button></div>
                         <div class="settings-list" id="typesList"></div>
                     </div>
-
-                    <!-- Categorias -->
                     <div class="settings-card">
-                        <div class="settings-header">
-                            <h3><i class="fas fa-tags"></i> Categorias</h3>
-                            <button class="btn-add-small" onclick="openAddCategoryModal()">
-                                <i class="fas fa-plus"></i> Adicionar
-                            </button>
-                        </div>
+                        <div class="settings-header"><h3><i class="fas fa-tags"></i> Categorias</h3><button class="btn-add-small" onclick="openAddCategoryModal()"><i class="fas fa-plus"></i> Adicionar</button></div>
                         <div class="settings-list" id="categoriesList"></div>
                     </div>
-
-                    <!-- Cartões -->
                     <div class="settings-card">
-                        <div class="settings-header">
-                            <h3><i class="fas fa-credit-card"></i> Cartões</h3>
-                            <button class="btn-add-small" onclick="openAddCardSettingsModal()">
-                                <i class="fas fa-plus"></i> Adicionar
-                            </button>
-                        </div>
+                        <div class="settings-header"><h3><i class="fas fa-credit-card"></i> Cartões</h3><button class="btn-add-small" onclick="openAddCardSettingsModal()"><i class="fas fa-plus"></i> Adicionar</button></div>
                         <div class="settings-list" id="cardsSettingsList"></div>
                     </div>
-
-                    <!-- Devedores -->
                     <div class="settings-card">
-                        <div class="settings-header">
-                            <h3><i class="fas fa-users"></i> Devedores</h3>
-                            <button class="btn-add-small" onclick="openAddDebtorModal()">
-                                <i class="fas fa-plus"></i> Adicionar
-                            </button>
-                        </div>
+                        <div class="settings-header"><h3><i class="fas fa-users"></i> Devedores</h3><button class="btn-add-small" onclick="openAddDebtorModal()"><i class="fas fa-plus"></i> Adicionar</button></div>
                         <div class="settings-list" id="debtorsList"></div>
                     </div>
-
-                    <!-- Resumo de Dívidas -->
                     <div class="settings-card" style="grid-column: 1 / -1;">
-                        <div class="settings-header">
-                            <h3><i class="fas fa-hand-holding-usd"></i> Resumo de Dívidas</h3>
-                        </div>
+                        <div class="settings-header"><h3><i class="fas fa-hand-holding-usd"></i> Resumo de Dívidas</h3></div>
                         <div class="table-container" style="margin-top: 16px;">
                             <table class="transactions-table">
-                                <thead>
-                                    <tr>
-                                        <th>Devedor</th>
-                                        <th>Total Devido</th>
-                                        <th>Transações</th>
-                                        <th>Última Transação</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
+                                <thead><tr><th>Devedor</th><th>Total Devido</th><th>Transações</th><th>Última Transação</th><th>Status</th></tr></thead>
                                 <tbody id="debtorsSummaryBody"></tbody>
                             </table>
                         </div>
                     </div>
-
-                    <!-- Configurações Gerais -->
                     <div class="settings-card">
-                        <div class="settings-header">
-                            <h3><i class="fas fa-sliders-h"></i> Configurações Gerais</h3>
-                        </div>
+                        <div class="settings-header"><h3><i class="fas fa-sliders-h"></i> Configurações Gerais</h3></div>
                         <div class="settings-form">
-                            <div class="form-group">
-                                <label>Moeda</label>
-                                <select id="currencySetting" onchange="updateCurrencySetting()">
-                                    <option value="BRL">Real (R$)</option>
-                                    <option value="USD">Dólar ($)</option>
-                                    <option value="EUR">Euro (€)</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Tema</label>
-                                <select id="themeSetting" onchange="updateThemeSetting()">
-                                    <option value="dark">Escuro</option>
-                                    <option value="light">Claro</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Token do GitHub</label>
-                                <div style="display: flex; gap: 8px;">
-                                    <input type="password" id="githubTokenInput" placeholder="ghp_..." style="flex: 1;">
-                                    <button type="button" class="btn-add-small" onclick="saveGitHubToken()" style="white-space: nowrap;">
-                                        <i class="fas fa-save"></i> Salvar
-                                    </button>
-                                </div>
-                                <small style="color: #b3b3b3; font-size: 12px; display: block; margin-top: 4px;">
-                                    🔒 O token fica salvo apenas no seu navegador.
-                                    <a href="https://github.com/settings/tokens" target="_blank" style="color: #6C63FF;">Gerar novo token</a>
-                                </small>
-                            </div>
-                            <button class="btn-submit" onclick="document.getElementById('importFile').click()">
-                                <i class="fas fa-upload"></i> Importar Dados
-                            </button>
+                            <div class="form-group"><label>Moeda</label><select id="currencySetting" onchange="updateCurrencySetting()"><option value="BRL">Real (R$)</option><option value="USD">Dólar ($)</option><option value="EUR">Euro (€)</option></select></div>
+                            <div class="form-group"><label>Tema</label><select id="themeSetting" onchange="updateThemeSetting()"><option value="dark">Escuro</option><option value="light">Claro</option></select></div>
+                            <button class="btn-submit" onclick="document.getElementById('importFile').click()"><i class="fas fa-upload"></i> Importar Dados</button>
                             <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importData(this.files[0])">
                         </div>
                     </div>
@@ -369,81 +242,26 @@
         </main>
     </div>
 
-    <!-- Botão Flutuante (FAB) -->
+    <!-- FAB Button -->
     <button class="fab-button" onclick="openAddModal()" title="Nova Transação (Ctrl+N)">
-        <i class="fas fa-plus"></i>
-        <span class="fab-tooltip">Nova Transação</span>
+        <i class="fas fa-plus"></i><span class="fab-tooltip">Nova Transação</span>
     </button>
 
     <!-- Transaction Modal -->
     <div class="modal" id="transactionModal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Nova Transação</h2>
-                <button class="close-modal" onclick="closeModal()">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
+            <div class="modal-header"><h2>Nova Transação</h2><button class="close-modal" onclick="closeModal()"><i class="fas fa-times"></i></button></div>
             <form id="transactionForm">
-                <div class="form-group">
-                    <label>Tipo</label>
-                    <select id="transType" required>
-                        <option value="saida" selected>Saída</option>
-                        <option value="entrada">Entrada</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Valor Total</label>
-                    <input type="number" id="transValue" step="0.01" required placeholder="0,00" onchange="updateInstallmentPreview()">
-                    <small style="color: #b3b3b3; font-size: 12px; display: none;" id="valuePerInstallment"></small>
-                </div>
-                <div class="form-group">
-                    <label>Categoria</label>
-                    <select id="transCategory" required>
-                        <option value="">Selecione...</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Descrição</label>
-                    <input type="text" id="transDescription" required placeholder="Descrição da transação">
-                </div>
-                <div class="form-group">
-                    <label>Data da Primeira Parcela</label>
-                    <input type="date" id="transDate" required onchange="updateInstallmentPreview()">
-                </div>
-                <div class="form-group">
-                    <label>Cartão (opcional)</label>
-                    <select id="transCard" onchange="toggleCardFields()">
-                        <option value="">Nenhum (Débito/Dinheiro)</option>
-                    </select>
-                </div>
-                <div class="form-group" id="installmentsGroup" style="display: none;">
-                    <label>Número de Parcelas</label>
-                    <select id="transInstallments" onchange="updateInstallmentPreview()">
-                        <option value="1">1x (À vista)</option>
-                        <option value="2">2x</option>
-                        <option value="3">3x</option>
-                        <option value="4">4x</option>
-                        <option value="5">5x</option>
-                        <option value="6">6x</option>
-                        <option value="7">7x</option>
-                        <option value="8">8x</option>
-                        <option value="9">9x</option>
-                        <option value="10">10x</option>
-                        <option value="11">11x</option>
-                        <option value="12">12x</option>
-                    </select>
-                </div>
-                <div class="form-group" id="debtorGroup" style="display: none;">
-                    <label>Devedor (quem está devendo neste cartão)</label>
-                    <select id="transDebtor">
-                        <option value="">Nenhum (Compra própria)</option>
-                    </select>
-                </div>
+                <div class="form-group"><label>Tipo</label><select id="transType" required><option value="saida" selected>Saída</option><option value="entrada">Entrada</option></select></div>
+                <div class="form-group"><label>Valor Total</label><input type="number" id="transValue" step="0.01" required placeholder="0,00" onchange="updateInstallmentPreview()"><small style="color: #b3b3b3; font-size: 12px; display: none;" id="valuePerInstallment"></small></div>
+                <div class="form-group"><label>Categoria</label><select id="transCategory" required><option value="">Selecione...</option></select></div>
+                <div class="form-group"><label>Descrição</label><input type="text" id="transDescription" required placeholder="Descrição da transação"></div>
+                <div class="form-group"><label>Data</label><input type="date" id="transDate" required onchange="updateInstallmentPreview()"></div>
+                <div class="form-group"><label>Cartão (opcional)</label><select id="transCard" onchange="toggleCardFields()"><option value="">Nenhum (Débito/Dinheiro)</option></select></div>
+                <div class="form-group" id="installmentsGroup" style="display: none;"><label>Número de Parcelas</label><select id="transInstallments" onchange="updateInstallmentPreview()"><option value="1">1x (À vista)</option><option value="2">2x</option><option value="3">3x</option><option value="4">4x</option><option value="5">5x</option><option value="6">6x</option><option value="7">7x</option><option value="8">8x</option><option value="9">9x</option><option value="10">10x</option><option value="11">11x</option><option value="12">12x</option></select></div>
+                <div class="form-group" id="debtorGroup" style="display: none;"><label>Devedor</label><select id="transDebtor"><option value="">Nenhum (Compra própria)</option></select></div>
                 <div id="installmentPreview" style="display: none; margin-top: 16px; padding: 12px; background: rgba(108, 99, 255, 0.1); border-radius: 12px; border: 1px solid rgba(108, 99, 255, 0.3);">
-                    <h4 style="margin-bottom: 8px; color: #6C63FF; font-size: 14px;">
-                        <i class="fas fa-calendar-alt"></i> Parcelas que serão criadas:
-                    </h4>
+                    <h4 style="margin-bottom: 8px; color: #6C63FF; font-size: 14px;"><i class="fas fa-calendar-alt"></i> Parcelas:</h4>
                     <div id="installmentList" style="font-size: 13px; color: #b3b3b3; max-height: 200px; overflow-y: auto;"></div>
                 </div>
                 <button type="submit" class="btn-submit">Salvar Transação</button>
@@ -454,18 +272,13 @@
     <!-- Type Modal -->
     <div class="modal" id="typeModal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="typeModalTitle">Novo Tipo</h2>
-                <button class="close-modal" onclick="closeTypeModal()">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
+            <div class="modal-header"><h2 id="typeModalTitle">Novo Tipo</h2><button class="close-modal" onclick="closeTypeModal()"><i class="fas fa-times"></i></button></div>
             <form id="typeForm">
                 <input type="hidden" id="typeEditId">
-                <div class="form-group"><label>Nome do Tipo</label><input type="text" id="typeName" required placeholder="Ex: Entrada, Saída"></div>
-                <div class="form-group"><label>Ícone (Font Awesome)</label><input type="text" id="typeIcon" placeholder="Ex: arrow-up, arrow-down"></div>
+                <div class="form-group"><label>Nome</label><input type="text" id="typeName" required placeholder="Ex: Entrada, Saída"></div>
+                <div class="form-group"><label>Ícone</label><input type="text" id="typeIcon" placeholder="Ex: arrow-up, arrow-down"></div>
                 <div class="form-group"><label>Cor</label><input type="color" id="typeColor" value="#4CAF50"></div>
-                <div class="form-group"><label>Tipo de fluxo</label><select id="typeFlow"><option value="entrada">Entrada (+)</option><option value="saida">Saída (-)</option></select></div>
+                <div class="form-group"><label>Fluxo</label><select id="typeFlow"><option value="entrada">Entrada (+)</option><option value="saida">Saída (-)</option></select></div>
                 <button type="submit" class="btn-submit">Salvar Tipo</button>
             </form>
         </div>
@@ -474,19 +287,14 @@
     <!-- Category Modal -->
     <div class="modal" id="categoryModal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="categoryModalTitle">Nova Categoria</h2>
-                <button class="close-modal" onclick="closeCategoryModal()">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
+            <div class="modal-header"><h2 id="categoryModalTitle">Nova Categoria</h2><button class="close-modal" onclick="closeCategoryModal()"><i class="fas fa-times"></i></button></div>
             <form id="categoryForm">
                 <input type="hidden" id="categoryEditId">
-                <div class="form-group"><label>Nome da Categoria</label><input type="text" id="categoryName" required placeholder="Ex: Alimentação"></div>
+                <div class="form-group"><label>Nome</label><input type="text" id="categoryName" required placeholder="Ex: Alimentação"></div>
                 <div class="form-group"><label>Tipo</label><select id="categoryType"><option value="entrada">Entrada</option><option value="saida">Saída</option><option value="ambos">Ambos</option></select></div>
-                <div class="form-group"><label>Ícone (Font Awesome)</label><input type="text" id="categoryIcon" placeholder="Ex: utensils, car"></div>
+                <div class="form-group"><label>Ícone</label><input type="text" id="categoryIcon" placeholder="Ex: utensils, car"></div>
                 <div class="form-group"><label>Cor</label><input type="color" id="categoryColor" value="#6C63FF"></div>
-                <div class="form-group"><label>Orçamento Padrão Mensal (opcional)</label><input type="number" id="categoryBudget" step="0.01" placeholder="0,00"></div>
+                <div class="form-group"><label>Orçamento Mensal</label><input type="number" id="categoryBudget" step="0.01" placeholder="0,00"></div>
                 <button type="submit" class="btn-submit">Salvar Categoria</button>
             </form>
         </div>
@@ -495,19 +303,14 @@
     <!-- Card Settings Modal -->
     <div class="modal" id="cardSettingsModal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="cardSettingsModalTitle">Novo Cartão</h2>
-                <button class="close-modal" onclick="closeCardSettingsModal()">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
+            <div class="modal-header"><h2 id="cardSettingsModalTitle">Novo Cartão</h2><button class="close-modal" onclick="closeCardSettingsModal()"><i class="fas fa-times"></i></button></div>
             <form id="cardSettingsForm">
                 <input type="hidden" id="cardSettingsEditId">
-                <div class="form-group"><label>Nome do Cartão</label><input type="text" id="cardSettingsName" required placeholder="Ex: Visa, MasterCard"></div>
-                <div class="form-group"><label>Bandeira</label><select id="cardSettingsBrand"><option value="Visa">Visa</option><option value="MasterCard">MasterCard</option><option value="American Express">American Express</option><option value="Elo">Elo</option><option value="Hipercard">Hipercard</option><option value="Nubank">Nubank</option><option value="Outro">Outro</option></select></div>
+                <div class="form-group"><label>Nome</label><input type="text" id="cardSettingsName" required placeholder="Ex: Visa, MasterCard"></div>
+                <div class="form-group"><label>Bandeira</label><select id="cardSettingsBrand"><option>Visa</option><option>MasterCard</option><option>American Express</option><option>Elo</option><option>Hipercard</option><option>Nubank</option><option>Outro</option></select></div>
                 <div class="form-group"><label>Limite</label><input type="number" id="cardSettingsLimit" step="0.01" required placeholder="0,00"></div>
-                <div class="form-group"><label>Dia de Fechamento</label><input type="number" id="cardSettingsClosingDay" min="1" max="31" placeholder="Dia"></div>
-                <div class="form-group"><label>Dia de Vencimento</label><input type="number" id="cardSettingsDueDay" min="1" max="31" placeholder="Dia"></div>
+                <div class="form-group"><label>Dia Fechamento</label><input type="number" id="cardSettingsClosingDay" min="1" max="31" placeholder="Dia"></div>
+                <div class="form-group"><label>Dia Vencimento</label><input type="number" id="cardSettingsDueDay" min="1" max="31" placeholder="Dia"></div>
                 <div class="form-group"><label>Cor</label><input type="color" id="cardSettingsColor" value="#6C63FF"></div>
                 <button type="submit" class="btn-submit">Salvar Cartão</button>
             </form>
@@ -517,12 +320,7 @@
     <!-- Debtor Modal -->
     <div class="modal" id="debtorModal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="debtorModalTitle">Novo Devedor</h2>
-                <button class="close-modal" onclick="closeDebtorModal()">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
+            <div class="modal-header"><h2 id="debtorModalTitle">Novo Devedor</h2><button class="close-modal" onclick="closeDebtorModal()"><i class="fas fa-times"></i></button></div>
             <form id="debtorForm">
                 <input type="hidden" id="debtorEditId">
                 <div class="form-group"><label>Nome *</label><input type="text" id="debtorName" required placeholder="Nome da pessoa"></div>
@@ -532,35 +330,8 @@
                 <button type="submit" class="btn-submit">Salvar Devedor</button>
             </form>
         </div>
-    </div
-	<!-- PIN Modal -->
-<div class="modal" id="pinModal" style="display: flex;">
-    <div class="modal-content" style="max-width: 380px; text-align: center;">
-        <div style="font-size: 48px; margin-bottom: 16px;">🔐</div>
-        <h2 style="margin-bottom: 8px;">Digite seu PIN</h2>
-        <p style="color: var(--text-secondary); margin-bottom: 20px; font-size: 14px;">
-            PIN de acesso ao Finance Dashboard
-        </p>
-        <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 16px;">
-            <input type="password" id="pinInput" maxlength="6" 
-                   style="width: 200px; padding: 14px; text-align: center; font-size: 24px; letter-spacing: 8px; 
-                          background: rgba(255,255,255,0.05); border: 2px solid var(--border-color); 
-                          border-radius: 12px; color: var(--text-primary); outline: none;"
-                   placeholder="****" onkeypress="if(event.key==='Enter')verifyPin()">
-        </div>
-        <button class="btn-submit" onclick="verifyPin()" style="width: 200px; margin: 0 auto;">
-            <i class="fas fa-lock-open"></i> Acessar
-        </button>
-        <p id="pinError" style="color: #F44336; margin-top: 12px; font-size: 13px; display: none;">
-            PIN incorreto! Tente novamente.
-        </p>
     </div>
-</div>
 
-<!-- Overlay para bloquear o conteúdo -->
-<div id="pinOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-     background: var(--bg-dark); z-index: 999; display: flex; align-items: center; justify-content: center;"></div>
-
-<script src="script.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
